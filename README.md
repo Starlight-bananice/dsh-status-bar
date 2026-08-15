@@ -1,23 +1,107 @@
-# dsh-status-bar · Configurable status bar for the DSH composer dock
+# dsh-status-bar · Know what your agent is doing — at a glance
 
-A management plugin for the DeepSeek Harness bottom bar: it replaces the
-built-in stats line with 17 toggleable, reorderable segments and ships a
-management settings page plus an in-composer quick-toggle menu.
+> A 17-segment, fully configurable status bar for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) composer dock. Replaces the built-in stats line with live session intelligence: status, model, context pressure, token burn, **real-time generation speed**, cost estimates, jobs and queue — toggled and reordered in two clicks, and it removes itself cleanly when you unload it.
 
-- Hybrid plugin: the bar renders client-side (config kept in `localStorage`
-  under `dsh.statusBar.v1`); the host side registers the `sessionModel` and
-  `liveTokenUsage` projections, the usage ledger, and the usage-chart API
-- The shipped `stats` cell is shadowed at a lower priority: while the plugin
-  is live its bar renders; unloading restores the built-in line untouched
+[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/version-0.1.0-green)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
 
-## Install
+[English](README.md) · [中文](README.zh.md)
+
+---
+
+## Overview
+
+**The problem:** the DSH composer shows one thin, fixed stats line. You cannot see the current model, how full the context window is, how fast tokens are streaming, or what a session has cost — and there is no way to arrange that information the way you work.
+
+**Who it is for:** power users and teams running DSH daily — anyone who wants live session telemetry without leaving the composer, and without running a separate monitor.
+
+**What it does:**
+
+- **17 toggleable, reorderable segments** — status dot, model, title, workspace, agent preset, turns & steps, model/tool time, TTFT & decode speed, cache-hit rate, tokens, context pressure, live TPS, session time, cost estimate, jobs, queue, errors
+- **Live throughput (TPS)** — a host-side projection folds every `assistant/chunk` event, so the speed updates chunk by chunk while streaming; no polling, no external live-stats plugin
+- **Cost estimation with a user-maintained model price book** — per-model rates, per-model peak/off-peak schedules, per-session re-pricing, and a «Usage & cost» dialog with a stacked cost-trend chart (day / week / month)
+- **Zero-config default** — 13 segments ship enabled; everything else is a checkbox away
+- **Clean takeover** — the plugin's bar shadows the built-in `stats` cell at lower priority: while loaded it renders, when unloaded the built-in line returns untouched
+- **Bilingual UI** — client locale strings ship for English and Chinese, following the DSH locale system
+
+## Compatibility
+
+| Item | Value |
+|---|---|
+| DSH versions | `0.1.0-rc.5` (mainline `master`) — earlier RCs may work but are not verified |
+| Last verified | 2026-08-15 |
+| Runtime | Node ≥ 22 (host) + modern browser (client); no external services |
+| Peer relation | Coexists with `@linxin666/dsh-live-stats` — both serve the `liveTokenUsage` key; the session-projection registry keeps the first registrant (one unit, no duplicate rows) |
+
+## Install / Uninstall
+
+### Install
 
 ```sh
-dsh plugin --profile web add ../dsh-status-bar   # profile assembly
-# or runtime injection via dsh-super-injector / dev_inject_plugin
+# From a local checkout (profile assembly; `web` is a hardcoded alias for `--profile web`)
+dsh plugin --profile web add ../dsh-status-bar
+
+# Or via the npm package
+dsh plugin --profile web add @dsh-external/dsh-status-bar
+
+# Or runtime injection without a restart (developer workflow)
+#   dev_inject_plugin / dsh-super-injector → point at this repository
 ```
 
-## Segments (17, all toggleable / reorderable)
+Then start/restart DSH Web. No configuration is required — the bar appears with its defaults.
+
+### Upgrade
+
+```sh
+dsh plugin --profile web update @dsh-external/dsh-status-bar   # or `update ../dsh-status-bar` for a local checkout
+```
+
+### Disable
+
+- **Hide the bar only** — the client master switch (Settings → Plugins → Status Bar, or the gear menu) turns the bar off instantly; the host projections and usage ledger keep running.
+- **Stop the plugin entirely** — remove it from the profile's `bundles` list (equivalent to uninstall below); re-adding restores it.
+
+### Uninstall
+
+```sh
+dsh plugin --profile web remove @dsh-external/dsh-status-bar
+```
+
+Removal restores the built-in stats line automatically (shadow cell released). **Data left behind:** browser `localStorage` (`dsh.statusBar.v1`) and the host usage file (see [Permissions & data](#permissions--data)) are not deleted — remove them manually if you want a clean slate.
+
+## Quick start
+
+1. Install (above), restart DSH Web.
+2. Start a session — the bar shows status · model · turns · durations · speeds · cache hit · tokens · context · TPS · session time · jobs · queue · errors by default.
+3. Open **Settings → Plugins → Status Bar** to toggle/reorder segments, enable wrapping, or reset.
+4. Want cost estimates? Add the models you use to the **model price book**:
+
+   ```sh
+   # In Settings → Plugins → Status Bar → Model price book:
+   # model "deepseek-chat" → input 2 / cache read 0.5 / cache write 2 / output 8 (CNY per 1M tokens)
+   # optional: enable peak/off-peak with DeepSeek's official windows 09:00–12:00, 14:00–18:00
+   ```
+
+   The bar then shows e.g. `≈¥0.0123` for the current session, re-priced automatically when you switch sessions/models. Click the chart button next to the gear to open the usage & cost dialog (stat cards, rate card, paged usage history, cost-trend chart with ‹ › period navigation).
+
+## Configuration
+
+All configuration is client-side, stored in browser `localStorage` under **`dsh.statusBar.v1`**, edited via the settings page or the in-composer gear menu.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Master switch; `false` hides the bar entirely |
+| `wrap` | `false` | Allow the bar to wrap onto multiple lines instead of eliding |
+| `segments` | 13 on / 4 off (see below) | Ordered list of enabled segments |
+| `cost.currency` | `CNY` | Currency for cost display (`CNY` / `USD`) |
+| `cost.models` | `{}` | User-maintained model price book (model id → prices + schedule) |
+
+**Default segment state:** on — status, model, counts, durations, speeds, cache hit, tokens, context, TPS, session time, jobs, queue, errors; off — title, workspace, agent, cost.
+
+**Model price book entry** (values added when a model is configured): input `2`, cache read `0.5`, cache write `2`, output `8` (per 1M tokens, in the configured currency); peak/off-peak disabled by default; when enabled, defaults to DeepSeek's official windows `09:00–12:00`, `14:00–18:00`, timezone `local`.
+
+**Environment variables:** `DSH_HOME` (host-side) — base directory for the plugin's local data (default `~/.dsh`). No other env vars, no secrets, no tokens.
+
+**Segment reference** (all 17, toggleable & reorderable):
 
 | Segment | Shows | Source |
 |---|---|---|
@@ -32,66 +116,36 @@ dsh plugin --profile web add ../dsh-status-bar   # profile assembly
 | Cache hit | prompt cache-hit share (2 decimals, capped at 99.99%) | `tokenUsage` |
 | Tokens | billed input/output totals | `tokenUsage` |
 | Context | context-window occupancy % | `contextPressure` |
-| Throughput TPS | live generation rate (default on) | `liveTokenUsage` projection — this plugin's host folds `assistant/chunk` events in real time (~4 chars/token while streaming, exact once the provider reports usage); the last rate is carried while idle |
+| Throughput TPS | live generation rate (default on) | `liveTokenUsage` projection — folded from `assistant/chunk` in real time (~4 chars/token while streaming, exact once the provider reports usage; last rate carried while idle) |
 | Session time | wall clock, ticks while running | `turnTimings` |
-| Cost estimate | ≈¥0.0123 (off by default) | `tokenUsage` × the current model's effective price |
+| Cost estimate | ≈¥0.0123 (off by default) | `tokenUsage` × the model's effective price |
 | Jobs | running background jobs | `jobsBySession` |
 | Queue | queued messages | snapshot `queue` |
 | Errors | failed/retried/over-limit count (>0 only) | node fold |
 
-Default-on: status, counts, model, context, durations, speeds, cache hit,
-tokens, TPS, session time, jobs, queue, errors. Cost defaults off.
+## Permissions & data
 
-## Cost estimate (model price book)
+| Category | What the plugin touches |
+|---|---|
+| Files | Host writes the usage ledger to `<DSH_HOME>/dsh-status-bar/usage.jsonl` (`~/.dsh/dsh-status-bar/usage.jsonl` by default; one record per assistant message: timestamp, model, input/cacheRead/cacheWrite/output tokens). In-memory history is a rolling 120-day window. |
+| Network | **No outbound requests, ever.** The only endpoint is the plugin's own local webserver route `/status-bar/api/usage` (same origin as DSH Web, `127.0.0.1`), serving the chart buckets. |
+| Credentials | **None.** The plugin never reads, stores, or transmits API keys, tokens, or cookies. |
+| User data | Client: `localStorage["dsh.statusBar.v1"]` (bar config + price book — no conversation content). Host: the usage ledger described above (token counts only, no prompts, no messages, no file contents). |
 
-- **User-maintained**: in Settings → Status Bar → Model price book, add the
-  models you use (any number); each model has its own per-1M-token rates
-  (input / cache hit / cache write / output) and its own peak/off-peak
-  schedule (timezone, multiple windows, peak/off-peak tiers).
-- **Usage-based**: token usage comes from each API response (`tokenUsage`
-  projection + per-node usage); cost = usage × the model's rates, and
-  switching sessions automatically re-prices at that session's model.
-- **Usage dialog**: a new «Usage & cost» button next to the settings gear in
-  the composer tool row opens the current conversation's breakdown — total
-  estimated cost, input/cache/output/hit-rate/context stat cards, the active
-  model's rate card, and a paged (15/page) usage history table.
-- **Cost trend chart**: a stacked bar chart in the dialog, colored per model,
-  switchable between Day (24 hours) / Week (7 days) / Month (daily), with ‹ ›
-  navigation into previous periods (yesterday / last week / last month). The
-  host subscribes the `session/event` feed and persists the aggregated usage
-  to the plugin's local data dir `~/.dsh/dsh-status-bar/usage.jsonl`, so it
-  survives restarts; costs are estimated at the price book's flat rates.
+## Troubleshooting
 
-## Throughput TPS (live states)
+| Symptom | Cause & fix |
+|---|---|
+| Bar does not appear | Master switch off → enable it in Settings → Plugins → Status Bar, or via the gear menu. `localStorage` cleared? Config resets to defaults. |
+| TPS segment is 0 / blank | No stream has started yet, or the stream is between retries. The measurement window restarts on each `llm/retry`; the carried rate never goes blank after the first stream. |
+| TPS conflicts with another plugin | If `@linxin666/dsh-live-stats` is loaded, the registry keeps whichever registered first for the shared `liveTokenUsage` key — one unit, no duplicate rows. |
+| Cost estimate missing | The model is not in the price book → add it in Settings → Plugins → Status Bar → Model price book. Costs are estimates at the book's flat rates, not provider billing. |
+| Usage chart is empty | No assistant messages with provider-reported usage in the period yet, or `DSH_HOME` points elsewhere than expected (check `usage.jsonl` location above). |
+| UI looks broken after an upgrade | Hard-refresh the browser (stale client bundle) and verify the plugin version in Settings. |
 
-The TPS segment reads the `liveTokenUsage` projection, which this plugin's
-host side serves over the DSH session-projection registry — the live-state
-channel between host and browser:
+**Logs:** the plugin writes no log files of its own — host-side diagnostics appear in the DSH web process output (profile logs); client-side issues surface in the browser devtools console.
 
-- The host folds every committed `assistant/chunk` event, so the rate updates
-  chunk by chunk while a stream is generating (no polling, no external
-  live-stats plugin needed); the bar throttles the displayed figure to at
-  most one refresh per 0.5 s
-- While the provider has not reported usage the rate is estimated at
-  ~4 chars/token; once a `usage` chunk lands mid-stream it becomes exact
-- The rate is the running average since the stream's first output token, and
-  the last measured rate is carried while idle — the segment never goes blank
-  after the first stream; a stream retried by the agent loop (`llm/retry`
-  marker) restarts its measurement window, so a stuck retry loop cannot keep
-  inflating the value
-- If `@linxin666/dsh-live-stats` is also loaded, both plugins serve the same
-  `liveTokenUsage` key; the session-projection registry keeps whichever
-  registered first (same key, one unit) — no duplicate rows
-
-## Management UI
-
-1. **Settings → Plugins → Status Bar**: master switch, wrap toggle, per-segment
-   checkboxes with ↑↓ reordering, the model price book (add/remove models,
-   per-model rates + peak/off-peak schedule), currency, sample preview, reset.
-2. **Gear button at the right end of the composer tool row**: toggle any
-   segment (or the bar itself) in place; the chart button next to it opens
-   the usage & cost dialog.
-3. Segments without data hide automatically.
+**Rollback:** the settings page has a one-click **Reset** (restores all defaults). For the plugin itself, uninstall → re-add the previous version with `dsh plugin --profile web add <pkg>@<version>`; the built-in stats line is always restored automatically on removal.
 
 ## Development
 
@@ -100,10 +154,11 @@ npm run build          # junction links + host tsc + client typecheck
 npm run build:client   # tsdown → lib/client.js (ModuleLoader bundle)
 ```
 
-The build needs `DSH_CHECKOUT` (or a common-path probe) pointing at a dsh
-source checkout; client typechecking resolves against the checkout's
-`lib/types` through junction links.
+The build needs `DSH_CHECKOUT` (or a common-path probe) pointing at a dsh source checkout; client typechecking resolves against the checkout's `lib/types` through junction links. Host-side sources are plain TypeScript (Cordis plugin), client sources are React + the DSH client UI slots.
 
-## License
+**Contributing:** fork the repository, branch off `main`, and open a PR — small, focused changes with a clear description are preferred. Report bugs via Issues with the DSH version, browser, and a minimal repro.
 
-MIT
+## License & security
+
+- **License:** [MIT](LICENSE) (© 2026 Starlight-bananice).
+- **Security:** this plugin holds no credentials and makes no network calls; the attack surface is the DSH host process itself. To report a security issue privately, use GitHub's **Security Advisories** on this repository (https://github.com/Starlight-bananice/dsh-status-bar/security/advisories/new) — do not open a public issue for vulnerabilities.
