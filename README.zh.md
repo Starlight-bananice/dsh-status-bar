@@ -126,7 +126,7 @@ dsh plugin --profile web remove @dsh-external/dsh-status-bar
 | 缓存命中 | 提示词缓存命中占比（两位小数，上限 99.99%） | `tokenUsage` |
 | Token | 计费输入/输出总量 | `tokenUsage` |
 | 上下文 | 上下文窗口占用 % | `contextPressure` |
-| 实时 TPS | 当前生成速率（默认开启） | `liveTokenUsage` 投影——实时折叠 `assistant/chunk`（流式期间约 4 字符/token，provider 上报用量后转为精确值；会话停止时显示 0） |
+| 实时 TPS | 当前生成速率（默认开启） | `liveTokenUsage` 投影——实时折叠 `assistant/chunk`；分块感知估算（约 4 字符/token + 块/角色框架开销，`block-end` 时按整块重定价，EWMA 抗突发冲刷），provider 上报用量后转为精确值；会话停止时显示 0 |
 | 会话时长 | 挂钟时间，运行时走动 | `turnTimings` |
 | 费用估算 | ≈¥0.0123（默认关闭） | `tokenUsage` × 该模型生效价格 |
 | 后台任务 | 运行中的后台任务 | `jobsBySession` |

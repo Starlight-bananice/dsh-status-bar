@@ -126,7 +126,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Cache hit | prompt cache-hit share (2 decimals, capped at 99.99%) | `tokenUsage` |
 | Tokens | billed input/output totals | `tokenUsage` |
 | Context | context-window occupancy % | `contextPressure` |
-| Throughput TPS | live generation rate (default on) | `liveTokenUsage` projection — folded from `assistant/chunk` in real time (~4 chars/token while streaming, exact once the provider reports usage; 0 while the session is not generating) |
+| Throughput TPS | live generation rate (default on) | `liveTokenUsage` projection — folded from `assistant/chunk` in real time; block-aware estimation (~4 chars/token + block/role framing, re-priced at `block-end`, EWMA against burst flushes), exact once the provider reports usage; 0 while the session is not generating |
 | Session time | wall clock, ticks while running | `turnTimings` |
 | Cost estimate | ≈¥0.0123 (off by default) | `tokenUsage` × the model's effective price |
 | Jobs | running background jobs | `jobsBySession` |
