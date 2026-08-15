@@ -23,6 +23,20 @@
 - **Clean takeover** — the plugin's bar shadows the built-in `stats` cell at lower priority: while loaded it renders, when unloaded the built-in line returns untouched
 - **Bilingual UI** — client locale strings ship for English and Chinese, following the DSH locale system
 
+## Screenshots
+
+The status bar replaces the built-in stats line with live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page:
+
+| Configure every segment (settings page) | Toggle & reorder on the go (segment list) |
+|---|---|
+| ![Settings page](assets/screenshot-settings-page.png) | ![Segment list](assets/screenshot-settings-segments.png) |
+
+Cost estimation is powered by a per-model price book with peak/off-peak pricing, and the usage & cost dialog breaks down every session:
+
+| Model price book (per-model rates + peak windows) | Usage & cost dialog (trend chart · stat cards · history) |
+|---|---|
+| ![Model price book](assets/screenshot-price-book.png) | ![Usage & cost dialog](assets/screenshot-usage-cost-dialog.png) |
+
 ## Compatibility
 
 | Item | Value |
