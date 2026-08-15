@@ -98,8 +98,12 @@ interface LiveRateState {
   tokensPerSecond: number | null
 }
 
+// 0 is a legitimate view value: the fold reports 0 once a stream settles
+// (no active generation) and the bar must show that. positive() would reject
+// exactly the settled snapshot the history path validates, failing every
+// history read of an idle session with a zod too_small error.
 const liveTokenUsageSchema = z.object({
-  tokensPerSecond: z.number().positive().optional(),
+  tokensPerSecond: z.number().nonnegative().optional(),
 }).strict()
 
 /** The current stream is the one tracked by the fold state. */
