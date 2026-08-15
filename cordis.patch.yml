@@ -1,0 +1,5 @@
+# dsh-status-bar bundle 层：替换底栏统计行 + 提供底栏管理界面。
+- insert:
+    - id: dsh-status-bar
+      name: '@dsh-external/dsh-status-bar'
+      config: {}

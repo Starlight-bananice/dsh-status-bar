@@ -1,0 +1,83 @@
+/**
+ * dsh-status-bar — DSH 底栏管理插件（host 侧）。
+ *
+ * Host side provides three things the browser cannot:
+ *  1. the `sessionModel` projection — the last model that produced an
+ *     assistant message (the client snapshot's assistant nodes carry no
+ *     provenance, so the bar reads this fold instead);
+ *  2. the `liveTokenUsage` projection — the real-time generation rate of the
+ *     current stream, folded from the `assistant/chunk` feed and served over
+ *     the projection registry (DSH's live-state channel), so the bar's TPS
+ *     segment tracks the stream chunk by chunk without any external
+ *     live-stats plugin;
+ *  3. a usage ledger — subscribes the global `session/event` feed, persists
+ *     every assistant message's provider-reported token usage to a JSONL
+ *     file in the plugin's local data directory (~/.dsh/dsh-status-bar),
+ *     and serves per-period per-model buckets to the usage dialog chart via
+ *     `/status-bar/api/usage`.
+ *
+ * All pricing stays client-side (the user-maintained model price book).
+ * @module @dsh-external/dsh-status-bar
+ */
+
+import type { Context } from 'cordis'
+import type {} from '@deepseek-ai/dsh-session-projection'
+import type {} from '@deepseek-ai/dsh-host-webserver'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { sessionModelProjectionDefinition } from './model-projection.ts'
+import { liveTokenUsageProjectionDefinition } from './live-rate.ts'
+import { ledgerDataDir, UsageLedger, type UsagePeriod } from './usage-ledger.ts'
+
+export const name = '@dsh-external/dsh-status-bar'
+export const inject = ['sessionProjections', 'webServer']
+
+function json(res: import('node:http').ServerResponse, status: number, body: unknown): void {
+  const text = JSON.stringify(body)
+  // Connection: close — every response gets a fresh connection. In this
+  // deployment the webserver's 5s keep-alive can leave half-open sockets in
+  // the browser pool, and a pooled request then hangs forever (async fetch
+  // stalls, page freezes). Short, infrequent JSON calls don't need pooling.
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'connection': 'close',
+  })
+  res.end(text)
+}
+
+const PERIODS: readonly UsagePeriod[] = ['day', 'week', 'month']
+
+/** Register the model projection, the live rate projection, the usage ledger, and the chart API. */
+export function apply(ctx: Context): void {
+  ctx.effect(() => ctx.sessionProjections.register(sessionModelProjectionDefinition), 'dsh-status-bar: sessionModel projection')
+  // Live rate: the same registry delivers the streaming throughput to the bar
+  // (see live-rate.ts for the fold and its carried-rate semantics).
+  ctx.effect(() => ctx.sessionProjections.register(liveTokenUsageProjectionDefinition), 'dsh-status-bar: liveTokenUsage projection')
+
+  // Usage ledger: fold every committed assistant message into the local
+  // JSONL-backed hourly store (feed listener + API share the instance).
+  const ledger = new UsageLedger(ledgerDataDir(process.env.DSH_HOME))
+  ctx.on('session/event', (_session, event: SessionEvent) => {
+    ledger.record(event)
+  })
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'prefix',
+    path: '/status-bar/api',
+    handler: async (req, res) => {
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1')
+      if (url.pathname !== '/status-bar/api/usage') {
+        json(res, 404, { error: 'not-found' })
+        return
+      }
+      const period = url.searchParams.get('period') as UsagePeriod | null
+      if (period === null || !PERIODS.includes(period)) {
+        json(res, 400, { error: 'invalid-period' })
+        return
+      }
+      const rawOffset = Number(url.searchParams.get('offset') ?? '0')
+      const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0
+      json(res, 200, ledger.query(period, offset))
+    },
+  }), 'dsh-status-bar: usage chart API')
+}
