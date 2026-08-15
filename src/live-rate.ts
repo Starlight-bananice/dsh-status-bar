@@ -26,6 +26,17 @@
  * accumulating into one window and the rate would climb while the agent is
  * stuck retrying.
  *
+ * A second hazard is the estimator's own clock: providers flush deltas in
+ * bursts (tool-call JSON arguments arrive with dt≈0–2 ms, and the
+ * persistence layer can batch-flush), so a plain running average over the
+ * window span climbs without bound during a burst — tokens keep accruing
+ * while `latest - first` stays frozen. The estimated branch therefore uses
+ * an EWMA over per-chunk INSTANT rates with a minimum inter-chunk interval
+ * (burst deltas are treated as spaced at MIN_DT_MS), which bounds the
+ * displayed figure to the real generation envelope; the exact branch
+ * (provider-reported usage) keeps the window average, which is faithful
+ * there, with a minimum span floor.
+ *
  * The fold is pure over the durable log (event `time` is the only clock), so
  * replay, restore, and the persisted projection cache all reproduce the same
  * values — no wall clock enters the state.
@@ -39,6 +50,20 @@ import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 
 /** Rough character density used until the provider reports exact usage. */
 export const CHARS_PER_TOKEN = 4
+
+/**
+ * Minimum inter-chunk interval for the estimated branch's instant rate.
+ * Providers flush bursts (tool-call arguments, batched deltas) with dt≈0,
+ * so a raw dt would report absurd rates; burst deltas are treated as spaced
+ * at this floor instead.
+ */
+export const MIN_DT_MS = 25
+
+/** Minimum window span for the exact (provider-reported) branch's average. */
+export const MIN_SPAN_MS = 250
+
+/** EWMA weight of the newest instant rate (0..1); higher = more responsive. */
+export const EWMA_ALPHA = 0.4
 
 /** Wire value: the live rate is absent until the first measurable output. */
 export interface LiveTokenUsageView {
@@ -57,6 +82,8 @@ interface LiveRateState {
   firstOutputTime: number | null
   /** Event time of the most recent counted output chunk, ms. */
   latestOutputTime: number | null
+  /** Event time of the previous counted output chunk, ms (inter-chunk dt for the instant rate). */
+  prevOutputTime: number | null
   /** Output tokens: provider-reported once a `usage` chunk lands, chars/4 estimate before. */
   outputTokens: number
   /** Whether `outputTokens` is still an estimate. */
@@ -107,16 +134,30 @@ function usageOutputTokens(usage: TokenUsage | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
 
-/** Running average since the stream's first output token, or the carried rate when not measurable. */
-function rateOf(
-  outputTokens: number,
-  firstOutputTime: number | null,
-  latestOutputTime: number | null,
-  carried: number | null,
-): number | null {
-  if (outputTokens <= 0 || firstOutputTime === null || latestOutputTime === null) return carried
-  const span = latestOutputTime - firstOutputTime
-  if (span <= 0) return carried
+/**
+ * Instant rate of one counted delta: `added` tokens over the inter-chunk
+ * interval, floored at MIN_DT_MS so burst-flushed deltas (dt≈0) cannot
+ * report absurd figures. The window's first chunk has no predecessor, so it
+ * is treated as spaced at the floor too.
+ */
+function instantRateOf(addedTokens: number, prevTime: number | null, nowTime: number): number {
+  const dt = prevTime === null ? MIN_DT_MS : Math.max(nowTime - prevTime, MIN_DT_MS)
+  return Math.round(addedTokens * 1_000 / dt * 10) / 10
+}
+
+/** Exponential smoothing of the instant rate; a null carried rate adopts the first sample. */
+function ewmaRate(carried: number | null, instant: number): number {
+  if (carried === null) return instant
+  return Math.round((carried * (1 - EWMA_ALPHA) + instant * EWMA_ALPHA) * 10) / 10
+}
+
+/**
+ * Window average for the exact branch (provider-reported usage): faithful
+ * there because both tokens and span are real, with a span floor so a
+ * burst-then-settle stream still lands on a sane figure.
+ */
+function spanRateOf(outputTokens: number, firstTime: number, nowTime: number): number {
+  const span = Math.max(nowTime - firstTime, MIN_SPAN_MS)
   return Math.round(outputTokens * 1_000 / span * 10) / 10
 }
 
@@ -127,6 +168,7 @@ function settled(state: LiveRateState): LiveRateState {
     step: null,
     firstOutputTime: null,
     latestOutputTime: null,
+    prevOutputTime: null,
     outputTokens: 0,
     estimated: false,
     tokensPerSecond: state.tokensPerSecond,
@@ -154,6 +196,7 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
     step: null,
     firstOutputTime: null,
     latestOutputTime: null,
+    prevOutputTime: null,
     outputTokens: 0,
     estimated: false,
     tokensPerSecond: null,
@@ -179,12 +222,17 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
         const fresh = !isTracked(state, turn, step)
         let outputTokens: number
         let estimated: boolean
+        let rate: number | null
         if (chunk.type === 'usage') {
           const reported = usageOutputTokens(chunk.usage)
           if (reported === null) return state
-          // A usage chunk lands mid-stream: exact buckets supersede the estimate.
+          // Exact buckets supersede the estimate; the rate is the faithful
+          // window average (provider tokens over real elapsed time), floored
+          // by MIN_SPAN_MS against burst-then-settle streams.
           outputTokens = reported
           estimated = false
+          const first = fresh || state.firstOutputTime === null ? event.time : state.firstOutputTime
+          rate = spanRateOf(outputTokens, first, event.time)
         } else {
           // Once the provider reported exact usage for the CURRENT window,
           // further deltas neither add tokens nor extend the span — the exact
@@ -195,6 +243,11 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
           if (added === 0) return state
           outputTokens = (fresh ? 0 : state.outputTokens) + added
           estimated = true
+          // Estimated branch: EWMA over per-chunk instant rates (inter-chunk
+          // dt floored at MIN_DT_MS), so burst-flushed deltas keep the figure
+          // inside the real generation envelope instead of climbing.
+          const instant = instantRateOf(added, fresh ? null : state.prevOutputTime, event.time)
+          rate = ewmaRate(state.tokensPerSecond, instant)
         }
         // The window starts at the first counted chunk of the current attempt;
         // a retry reset clears firstOutputTime, so the next chunk re-anchors.
@@ -206,9 +259,10 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
           step,
           firstOutputTime,
           latestOutputTime: event.time,
+          prevOutputTime: event.time,
           outputTokens,
           estimated,
-          tokensPerSecond: rateOf(outputTokens, firstOutputTime, event.time, state.tokensPerSecond),
+          tokensPerSecond: rate,
         }
       }
       case 'assistant/message': {
@@ -220,7 +274,9 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
         const outputTokens = reported !== null ? reported : state.outputTokens
         const estimated = reported !== null ? false : state.estimated
         const firstOutputTime = state.firstOutputTime ?? event.time
-        const rate = rateOf(outputTokens, firstOutputTime, event.time, state.tokensPerSecond)
+        const rate = outputTokens > 0
+          ? spanRateOf(outputTokens, firstOutputTime, event.time)
+          : state.tokensPerSecond
         return settled({ ...state, outputTokens, estimated, tokensPerSecond: rate })
       }
       case 'step/end': {
@@ -235,5 +291,5 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
     }
   },
   view: state => state.tokensPerSecond === null ? {} : { tokensPerSecond: state.tokensPerSecond },
-  stateVersion: 1,
+  stateVersion: 2,
 }
