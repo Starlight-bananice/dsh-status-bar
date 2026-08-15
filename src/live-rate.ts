@@ -12,12 +12,12 @@
  * reports a `usage` chunk mid-stream the estimate is replaced by the exact
  * `outputTokens`, and the rate is then provider-accurate.
  *
- * Rate semantics mirror the ecosystem's live-stats convention: tokens
- * accumulated since the stream's first output token divided by that span
- * (a running average, not an instant sample), rounded to one decimal. Once a
- * stream settles (`assistant/message`, `step/end`, or `turn/end`) the active
- * window is dropped but the last measured rate is carried, so an idle bar
- * still shows the most recent throughput instead of vanishing.
+ * Rate semantics: tokens accumulated since the stream's first output token
+ * divided by that span (a running average, not an instant sample), rounded to
+ * one decimal. Once a stream settles (`assistant/message`, `step/end`, or
+ * `turn/end`) the active window is dropped and the rate reports **0** — no
+ * active stream means no generation, so the bar's TPS segment falls to zero
+ * the moment the agent stops producing instead of freezing on a stale value.
  *
  * One hazard is folded explicitly: the agent loop retries a failed stream
  * under the SAME (turn, step) with no boundary event in between, so the
@@ -55,15 +55,21 @@ export const CHARS_PER_TOKEN = 4
  * Minimum inter-chunk interval for the estimated branch's instant rate.
  * Providers flush bursts (tool-call arguments, batched deltas) with dt≈0,
  * so a raw dt would report absurd rates; burst deltas are treated as spaced
- * at this floor instead.
+ * at this floor instead. 20 ms bounds a burst to the real generation
+ * envelope (measured: ≤ ~360 tok/s on real sessions) while genuine
+ * high-speed streaming still reads through.
  */
-export const MIN_DT_MS = 25
+export const MIN_DT_MS = 20
 
 /** Minimum window span for the exact (provider-reported) branch's average. */
 export const MIN_SPAN_MS = 250
 
-/** EWMA weight of the newest instant rate (0..1); higher = more responsive. */
-export const EWMA_ALPHA = 0.4
+/**
+ * EWMA weight of the newest instant rate (0..1); higher = more responsive.
+ * 0.6 keeps the figure snappy (≈2 chunks to a 90% step) while the instant
+ * rate's dt floor still damps burst noise.
+ */
+export const EWMA_ALPHA = 0.6
 
 /** Wire value: the live rate is absent until the first measurable output. */
 export interface LiveTokenUsageView {
@@ -71,7 +77,7 @@ export interface LiveTokenUsageView {
 }
 
 /**
- * Fold state: the active stream's counters plus the carried last rate.
+ * Fold state: the active stream's counters plus the last measured rate.
  * Plain JSON per the unit contract (persisted-cache precondition).
  */
 interface LiveRateState {
@@ -88,7 +94,7 @@ interface LiveRateState {
   outputTokens: number
   /** Whether `outputTokens` is still an estimate. */
   estimated: boolean
-  /** Last measured rate (tok/s), carried while idle / across rate-less streams. */
+  /** Last measured rate (tok/s); 0 once the stream settles (no active generation). */
   tokensPerSecond: number | null
 }
 
@@ -161,7 +167,7 @@ function spanRateOf(outputTokens: number, firstTime: number, nowTime: number): n
   return Math.round(outputTokens * 1_000 / span * 10) / 10
 }
 
-/** The idle state every settle lands on (active window dropped, rate carried). */
+/** The idle state every settle lands on (window dropped, rate reported as 0). */
 function settled(state: LiveRateState): LiveRateState {
   return {
     turn: null,
@@ -171,7 +177,7 @@ function settled(state: LiveRateState): LiveRateState {
     prevOutputTime: null,
     outputTokens: 0,
     estimated: false,
-    tokensPerSecond: state.tokensPerSecond,
+    tokensPerSecond: 0,
   }
 }
 
@@ -213,7 +219,10 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
     if ((event as { type?: string }).type === 'llm/retry' && state.turn !== null) {
       const data = (event as { data?: { turn?: unknown; step?: unknown } }).data
       if (data?.turn === state.turn && data?.step === state.step) {
-        return { ...settled(state), turn: state.turn, step: state.step }
+        // Window reset, but keep the measured rate across the short retry
+        // wait (0.5 s+) — a fresh attempt is about to stream, so flashing 0
+        // here would just flicker.
+        return { ...settled(state), turn: state.turn, step: state.step, tokensPerSecond: state.tokensPerSecond }
       }
     }
     switch (event.type) {
@@ -266,18 +275,14 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
         }
       }
       case 'assistant/message': {
-        // The stream finished: recompute with the assembled message's usage
-        // (exact when reported, extending the span to the message time), then
-        // settle with that as the carried rate.
+        // The stream finished: fold the assembled message's usage into the
+        // exact buckets, then settle — the bar reports 0 while no stream is
+        // active (see `settled`).
         if (!isTracked(state, event.data.turn, event.data.step)) return state
         const reported = usageOutputTokens(event.data.usage)
         const outputTokens = reported !== null ? reported : state.outputTokens
         const estimated = reported !== null ? false : state.estimated
-        const firstOutputTime = state.firstOutputTime ?? event.time
-        const rate = outputTokens > 0
-          ? spanRateOf(outputTokens, firstOutputTime, event.time)
-          : state.tokensPerSecond
-        return settled({ ...state, outputTokens, estimated, tokensPerSecond: rate })
+        return settled({ ...state, outputTokens, estimated })
       }
       case 'step/end': {
         // A step closed without a message (cancelled) settles the same way.
