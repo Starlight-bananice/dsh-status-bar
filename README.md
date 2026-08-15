@@ -25,17 +25,13 @@
 
 ## Screenshots
 
-The status bar replaces the built-in stats line with live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page:
+The status bar replaces the built-in stats line with live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page — including a per-model price book with peak/off-peak pricing:
 
-| Configure every segment (settings page) | Toggle & reorder on the go (segment list) |
+![Settings & model price book](assets/screenshot-settings-page-en.png)
+
+| Toggle & reorder on the go (segment list) | Usage & cost dialog (trend chart · stat cards · history) |
 |---|---|
-| ![Settings page](assets/screenshot-settings-page.png) | ![Segment list](assets/screenshot-settings-segments.png) |
-
-Cost estimation is powered by a per-model price book with peak/off-peak pricing, and the usage & cost dialog breaks down every session:
-
-| Model price book (per-model rates + peak windows) | Usage & cost dialog (trend chart · stat cards · history) |
-|---|---|
-| ![Model price book](assets/screenshot-price-book.png) | ![Usage & cost dialog](assets/screenshot-usage-cost-dialog.png) |
+| ![Segment list](assets/screenshot-settings-segments-en.png) | ![Usage & cost dialog](assets/screenshot-usage-cost-dialog-en.png) |
 
 ## Compatibility
 
