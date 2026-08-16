@@ -246,7 +246,7 @@ export function usageHistory(
   session: ConversationSnapshot,
   state: SessionUsageClientState | undefined,
   cost: CostPrices,
-  limit = 60,
+  limit = 200,
 ): UsageHistoryRow[] {
   const rows: UsageHistoryRow[] = []
   for (let i = session.nodes.length - 1; i >= 0 && rows.length < limit; i -= 1) {

@@ -33,7 +33,9 @@ function Row({ label, value, hint }: { label: string; value: string; hint?: stri
   )
 }
 
-const HISTORY_PAGE_SIZE = 15
+const HISTORY_PAGE_SIZE = 20
+/** Cap total history entries shown (page size × max pages: 20 × 10). */
+const HISTORY_MAX_ROWS = HISTORY_PAGE_SIZE * 10
 
 function HistoryTable({ rows, currency, t }: {
   rows: readonly UsageHistoryRow[]
@@ -143,7 +145,7 @@ export const UsageDialogEntry = memo(function UsageDialogEntry(props: UsageDialo
 
   const modelConfig = modelConfigFor(config.cost, sessionModel?.model)
   const prices = effectivePrices(sessionModel ?? null, config.cost, now)
-  const rows = usageHistory(session, sessionUsage, config.cost, 20)
+  const rows = usageHistory(session, sessionUsage, config.cost, HISTORY_MAX_ROWS)
 
   const billedInput = usage === undefined
     ? 0
