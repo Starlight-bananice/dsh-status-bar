@@ -103,7 +103,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Option | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | Master switch; `false` hides the bar entirely |
-| `wrap` | `false` | Allow the bar to wrap onto multiple lines instead of eliding |
+| `wrap` | `false` | Allow the bar to wrap onto multiple lines within the input card's width instead of eliding (the bar never runs past the input box's edges in either mode) |
 | `segments` | 13 on / 4 off (see below) | Ordered list of enabled segments |
 | `cost.currency` | `CNY` | Currency for cost display (`CNY` / `USD`) |
 | `cost.models` | `{}` | User-maintained model price book (model id → prices + schedule) |

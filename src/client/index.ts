@@ -39,6 +39,12 @@ const STYLES = `
   display: block;
   text-align: center;
   width: 100%;
+  /* Bound to the composer input card so the bar never runs past the input
+     box's edges: single-line mode elides within this cap, wrap mode (below)
+     reflows inside it. The composer context provides
+     --dsh-composer-card-max-width; the fallback only serves the settings
+     preview, whose own box is narrower than 780px anyway. */
+  max-width: var(--dsh-composer-card-max-width, 780px);
   margin: 0 auto;
   box-sizing: border-box;
   padding: 4px 0 0;

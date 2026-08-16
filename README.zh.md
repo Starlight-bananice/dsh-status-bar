@@ -103,7 +103,7 @@ dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
 | 配置项 | 默认值 | 含义 |
 |---|---|---|
 | `enabled` | `true` | 总开关；`false` 时整条底栏隐藏 |
-| `wrap` | `false` | 允许底栏换行多行显示而非截断省略 |
+| `wrap` | `false` | 允许底栏在输入框宽度内换行多行显示而非截断省略（无论开关与否，底栏都不会超出输入框左右边界） |
 | `segments` | 13 开 / 4 关（见下） | 已启用的信息段有序列表 |
 | `cost.currency` | `CNY` | 费用显示币种（`CNY` / `USD`） |
 | `cost.models` | `{}` | 用户维护的模型价格手册（模型 id → 价格 + 峰谷时段） |
