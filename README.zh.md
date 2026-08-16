@@ -67,7 +67,14 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 ### 升级
 
 ```sh
-dsh plugin --profile web update github:Starlight-bananice/dsh-status-bar   # 本地目录则 update ../dsh-status-bar
+# pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到的 commit ——
+# `dsh plugin --profile web update github:...` 只会提示 "Already up to date"
+# 并保留旧构建。升级请用重新 add：
+dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+
+# 或固定显式 ref（tag / 分支 / commit）
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.5
 ```
 
 ### 禁用

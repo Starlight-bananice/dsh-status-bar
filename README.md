@@ -67,7 +67,14 @@ Then start/restart DSH Web. No configuration is required — the bar appears wit
 ### Upgrade
 
 ```sh
-dsh plugin --profile web update github:Starlight-bananice/dsh-status-bar   # or `update ../dsh-status-bar` for a local checkout
+# pnpm pins a ref-less `github:` dependency to the commit resolved at install
+# time, so `dsh plugin update github:...` reports "Already up to date" and
+# keeps the old build. Upgrade with a re-add:
+dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+
+# or pin an explicit ref (tag / branch / commit)
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.5
 ```
 
 ### Disable
