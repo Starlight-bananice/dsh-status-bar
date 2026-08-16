@@ -20,7 +20,9 @@ jobs:
           version: 11.21.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # pnpm 11.x requires Node >= 22.13 (uses node:sqlite); Node 20 is
+          # also deprecated on GitHub runners — stay on a supported LTS.
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Syntax-check every shipped JS artifact
@@ -50,7 +52,8 @@ jobs:
           version: 11.21.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # pnpm 11.x requires Node >= 22.13 (uses node:sqlite).
+          node-version: 24
       - name: Detect src/build changes
         id: changed
         run: |
