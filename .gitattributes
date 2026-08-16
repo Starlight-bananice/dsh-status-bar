@@ -1,0 +1,6 @@
+# Uniform LF checkouts on every platform → byte-reproducible lib/ rebuilds
+# (source content embedded in lib/*.js.map must not flip between CRLF/LF).
+* text=auto eol=lf
+
+# Sourcemaps embed raw source text; never let git rewrite map bytes.
+*.map -text

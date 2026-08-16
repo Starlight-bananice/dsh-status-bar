@@ -2,7 +2,7 @@
 
 > 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 输入栏打造的 **17 段可配置会话状态栏**。替换内置统计行，实时呈现会话状态、当前模型、上下文压力、Token 消耗、**生成速度（TPS）**、费用估算、任务与队列——两下点击即可开关与排序，卸载后内置统计行原样恢复。
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/version-0.1.0-green)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
+[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -52,6 +52,10 @@ dsh plugin --profile web add ../dsh-status-bar
 
 # 或从 GitHub 仓库安装
 dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+
+# 或安装固定版本的 release tgz —— 不可变且带版本号（随每个 GitHub
+# release 附带；适合不便直连 git 仓库的场景）
+dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.5/starlight-bananice-dsh-status-bar-0.1.5.tgz
 ```
 > **提示：** pnpm 从 `codeload.github.com` 下载 GitHub 包，且不读取你的 git 代理配置。若安装卡住或报网络错误（如 `error (23)`），请先导出代理再重试：`export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890`。
 
@@ -164,6 +168,7 @@ dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
 | 费用估算缺失 | 会话所用模型都未在价格手册中（或价格全为 0）→ 在 设置 → 插件 → 状态栏 → 模型价格手册 中添加。费用按手册费率估算（逐模型、平峰或峰谷），非 provider 账单。 |
 | 用量图表为空 | 该时段内还没有带 provider 用量上报的 assistant 消息，或 `DSH_HOME` 指向了别处（核对上面 `usage.jsonl` 的位置）。 |
 | 升级后界面异常 | 硬刷新浏览器（客户端 bundle 可能过期），并在设置中核对插件版本。 |
+| 不确定当前装的是哪个版本 | 在 profile 目录（macOS/Linux）执行：`node -p "require(process.env.HOME + '/.dsh/profiles/web/node_modules/@Starlight-bananice/dsh-status-bar/package.json').version"`。低于 `v0.1.5`？按上面的升级步骤重装——不带 ref 的 `github:` 安装会一直保留安装时解析到的 commit。 |
 
 **日志位置：** 插件自身不写日志文件——host 侧诊断信息出现在 DSH web 进程输出（profile 日志）中；客户端问题可在浏览器 devtools 控制台查看。
 
@@ -178,6 +183,14 @@ npm run build           # junction 链接 + host tsc + 客户端类型检查（�
 ```
 
 自 v0.1.5 起 `lib/` 构建产物**已提交入库**，普通 git 安装开箱即用，无需构建；上面的命令用于发版前刷新产物。`npm run build` / `typecheck:client` 需要 `DSH_CHECKOUT`（或公共路径探测），客户端类型检查通过 junction 链接解析到检出目录的 `lib/types`。host 侧为纯 TypeScript（Cordis 插件），客户端为 React + DSH client UI slots。
+
+**保持 `lib/` 与源码同步：** 先执行 `pnpm install --frozen-lockfile`（重建必须用 `pnpm-lock.yaml` 钉住的精确工具链，可复现），再在推送前执行 `npm run verify`（`scripts/verify.sh` 会重新构建 host + client，并在提交的 `lib/` 与 `src/` 不一致时直接报错）。仓库还附带 pre-push hook，push 触及 `src/` 或构建配置时自动执行该检查——启用一次即可：
+
+```sh
+git config core.hooksPath .githooks
+```
+
+`lib-sync` GitHub Actions 工作流在 CI 中施加同样的约束：每次 push/PR 跑快速产物完整性检查；触及 `src/` 的 PR 与手动触发时跑完整"重建 vs `lib/`"漂移检查。
 
 **贡献方式：** fork 本仓库，从 `main` 开分支，提交 PR——欢迎小而聚焦、描述清晰的改动。Bug 请在 Issues 中提交，附上 DSH 版本、浏览器与最小复现步骤。
 

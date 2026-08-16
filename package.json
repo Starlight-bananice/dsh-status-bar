@@ -64,6 +64,7 @@
   "scripts": {
     "build": "bash scripts/build.sh",
     "build:client": "tsdown",
+    "verify": "bash scripts/verify.sh",
     "typecheck:client": "bash scripts/build.sh --client-only"
   }
 }

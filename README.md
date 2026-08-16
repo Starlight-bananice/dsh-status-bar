@@ -2,7 +2,7 @@
 
 > A 17-segment, fully configurable status bar for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) composer dock. Replaces the built-in stats line with live session intelligence: status, model, context pressure, token burn, **real-time generation speed**, cost estimates, jobs and queue — toggled and reordered in two clicks, and it removes itself cleanly when you unload it.
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/version-0.1.0-green)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
+[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -52,6 +52,10 @@ dsh plugin --profile web add ../dsh-status-bar
 
 # Or from the GitHub repository
 dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+
+# Or a pinned release tarball — immutable and versioned (attached to every
+# GitHub release; handy when git access to the repo is awkward)
+dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.5/starlight-bananice-dsh-status-bar-0.1.5.tgz
 ```
 > **Note:** pnpm fetches GitHub-hosted packages from `codeload.github.com` and does not read your git proxy config. If the install hangs or fails with a network error (e.g. `error (23)`), export an HTTP(S) proxy: `export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890` and re-run.
 
@@ -164,6 +168,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Cost estimate missing | None of the session's models is in the price book (or they are all zero-priced) → add them in Settings → Plugins → Status Bar → Model price book. Costs are estimated at the book's rates (per model, flat or peak/off-peak), not provider billing. |
 | Usage chart is empty | No assistant messages with provider-reported usage in the period yet, or `DSH_HOME` points elsewhere than expected (check `usage.jsonl` location above). |
 | UI looks broken after an upgrade | Hard-refresh the browser (stale client bundle) and verify the plugin version in Settings. |
+| Can't tell which version is installed | From the profile directory (macOS/Linux): `node -p "require(process.env.HOME + '/.dsh/profiles/web/node_modules/@Starlight-bananice/dsh-status-bar/package.json').version"`. Behind `v0.1.5`? Re-apply the Upgrade steps — a ref-less `github:` install keeps the commit resolved at install time. |
 
 **Logs:** the plugin writes no log files of its own — host-side diagnostics appear in the DSH web process output (profile logs); client-side issues surface in the browser devtools console.
 
@@ -178,6 +183,14 @@ npm run build           # junction links + host tsc + client typecheck (needs DS
 ```
 
 Build artifacts under `lib/` are **committed** (since v0.1.5), so plain git installs work without any build step; the commands above exist to refresh the artifacts before a release. `npm run build` / `typecheck:client` need `DSH_CHECKOUT` (or the common-path probe) — client typechecking resolves against the checkout's `lib/types` through junction links. Host-side sources are plain TypeScript (Cordis plugin), client sources are React + the DSH client UI slots.
+
+**Keeping `lib/` in sync:** run `pnpm install --frozen-lockfile` (reproducible rebuilds use the exact toolchain pinned in `pnpm-lock.yaml`), then `npm run verify` before pushing (`scripts/verify.sh` rebuilds host + client and fails when the committed `lib/` drifted from `src/`). The repository also ships a pre-push hook that runs it automatically whenever a push touches `src/` or the build config — enable it once with:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+The `lib-sync` GitHub Actions workflow enforces the same invariant in CI: a fast artifact-integrity check on every push/PR, plus a full rebuild-vs-`lib/` drift check on PRs that touch `src/` and on manual dispatch.
 
 **Contributing:** fork the repository, branch off `main`, and open a PR — small, focused changes with a clear description are preferred. Report bugs via Issues with the DSH version, browser, and a minimal repro.
 

@@ -19,7 +19,6 @@ if [ -z "$CHECKOUT" ] || [ ! -d "$CHECKOUT/packages" ]; then
     "$HOME/Documents/deepseek-harness" \
     "$HOME/dsh" \
     "$HOME/Documents/dsh/../deepseek-harness" \
-    "/Users/a64485/deepseek-harness" \
     "/opt/deepseek-harness" \
     "/workspace/deepseek-harness"; do
     if [ -d "$cand/packages" ]; then CHECKOUT="$cand"; break; fi
@@ -27,6 +26,9 @@ if [ -z "$CHECKOUT" ] || [ ! -d "$CHECKOUT/packages" ]; then
 fi
 if [ -z "$CHECKOUT" ] || [ ! -d "$CHECKOUT/packages" ]; then
   echo "build: cannot locate the dsh checkout (set DSH_CHECKOUT)" >&2
+  echo "       v0.1.5+ installs ship prebuilt lib/ — end users do NOT need" >&2
+  echo "       build.sh. It is only for plugin development; see README →" >&2
+  echo "       Development for how to point it at a DeepSeek Harness checkout." >&2
   exit 1
 fi
 echo "=== Checkout: $CHECKOUT ==="

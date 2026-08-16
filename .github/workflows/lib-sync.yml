@@ -1,0 +1,97 @@
+name: lib-sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Fast integrity gate on every push/PR: the committed artifacts must exist
+  # and be syntactically valid. Catches the v0.1.4 bug class (package without
+  # lib/) and corrupt/partial commits without needing a DSH checkout.
+  artifacts-load:
+    name: Committed lib/ integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Syntax-check every shipped JS artifact
+        run: |
+          set -e
+          shopt -s globstar nullglob
+          for f in lib/**/*.js; do
+            [ -f "$f" ] && node --check "$f"
+          done
+          test -f lib/client.js
+          test -f lib/types/index.d.ts
+      - name: Package metadata sanity
+        run: node -e "const p=require('./package.json'); for (const k of ['version','main','exports']) if (!p[k]) throw new Error('missing ' + k); console.log('ok', p.version)"
+
+  # Full drift check: rebuild host + client against a real DeepSeek Harness
+  # checkout and fail when the committed lib/ differs from the rebuild.
+  # Heavy (clones + installs the harness monorepo) → manual dispatch, or on
+  # PRs that touch src/ or the build config.
+  drift:
+    name: lib/ drift check (needs harness checkout)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Detect src/build changes
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+          else
+            base="$(git rev-parse HEAD~1)"
+            head="HEAD"
+          fi
+          if git diff --name-only "$base" "$head" 2>/dev/null \
+              | grep -qE '^(src/|scripts/|package\.json|tsconfig\.|tsdown\.)'; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Clone DeepSeek Harness checkout
+        if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
+        run: git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness "$HOME/deepseek-harness"
+      - name: Install plugin devDependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm ls --depth 0 || true
+      - name: Install harness dependencies
+        if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: $HOME/deepseek-harness
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Rebuild host + client
+        if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          DSH_CHECKOUT: ${{ runner.home }}/deepseek-harness
+        run: |
+          bash scripts/build.sh
+          npm run build:client
+      - name: Fail if committed lib/ drifted
+        if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          # Code artifacts (js/d.ts) must match byte-for-byte; *.map embeds
+          # source text whose EOLs follow the building machine (debug-only).
+          if ! git diff --exit-code -- lib/ ':!lib/*.map'; then
+            echo "::error::lib/ is stale — run 'npm run verify', commit the rebuilt lib/, and push again"
+            exit 1
+          fi
+          echo "lib/ in sync"

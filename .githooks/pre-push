@@ -1,0 +1,44 @@
+#!/bin/bash
+# Pre-push guard: when the pushed commits touch src/ (or the build config),
+# rebuild and fail the push if the committed lib/ is stale.
+#
+# Enable with:  git config core.hooksPath .githooks
+# Skip a push with:  DSH_SKIP_VERIFY=1 git push
+set -euo pipefail
+
+if [ "${DSH_SKIP_VERIFY:-0}" = "1" ]; then
+  echo "pre-push: skipped (DSH_SKIP_VERIFY=1)"
+  exit 0
+fi
+
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+VERIFY="$HOOK_DIR/../scripts/verify.sh"
+ZERO="0000000000000000000000000000000000000000"
+
+check_ref() { # $1=local_sha  $2=remote_sha
+  local local_sha="$1" remote_sha="$2"
+  if [ "$local_sha" = "$ZERO" ]; then
+    return 0                                # branch deletion — nothing to check
+  fi
+  if [ "$remote_sha" = "$ZERO" ]; then      # new branch — diff against parent
+    local base
+    base="$(git rev-parse "$local_sha"^ 2>/dev/null || echo "$local_sha")"
+  else
+    local base="$remote_sha"
+  fi
+  if git diff --name-only "$base" "$local_sha" 2>/dev/null \
+      | grep -qE '^(src/|lib/|scripts/|package\.json|tsconfig\.|tsdown\.)'; then
+    echo "pre-push: src/lib or build config changed — verifying committed lib/ is in sync"
+    bash "$VERIFY" || {
+      echo "pre-push: FAILED — lib/ is stale relative to src/." >&2
+      echo "         Commit the rebuilt lib/ (git diff --stat -- lib/) and push again." >&2
+      exit 1
+    }
+  fi
+}
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "$local_ref" ] && continue
+  check_ref "$local_sha" "$remote_sha"
+done
+exit 0
