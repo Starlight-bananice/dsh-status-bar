@@ -20,7 +20,7 @@
  *     `/status-bar/api/usage`.
  *
  * All pricing stays client-side (the user-maintained model price book).
- * @module @dsh-external/dsh-status-bar
+ * @module @Starlight-bananice/dsh-status-bar
  */
 
 import type { Context } from 'cordis'
@@ -32,7 +32,7 @@ import { liveTokenUsageProjectionDefinition } from './live-rate.ts'
 import { sessionUsageProjectionDefinition } from './session-usage.ts'
 import { ledgerDataDir, UsageLedger, type UsagePeriod } from './usage-ledger.ts'
 
-export const name = '@dsh-external/dsh-status-bar'
+export const name = '@Starlight-bananice/dsh-status-bar'
 export const inject = ['sessionProjections', 'webServer']
 
 function json(res: import('node:http').ServerResponse, status: number, body: unknown): void {

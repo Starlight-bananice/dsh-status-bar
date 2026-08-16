@@ -18,7 +18,7 @@
 
 - **17 toggleable, reorderable segments** — status dot, model, title, workspace, agent preset, turns & steps, model/tool time, TTFT & decode speed, cache-hit rate, tokens, context pressure, live TPS, session time, cost estimate, jobs, queue, errors
 - **Live throughput (TPS)** — a host-side projection folds every `assistant/chunk` event, so the speed updates chunk by chunk while streaming; no polling, no external live-stats plugin
-- **Cost estimation with a user-maintained model price book** — per-model rates, per-model peak/off-peak schedules, per-session re-pricing, and a «Usage & cost» dialog with a stacked cost-trend chart (day / week / month)
+- **Cost estimation with a user-maintained model price book** — per-model rates, per-model peak/off-peak schedules, **each message/step priced with the model that actually produced it** (input, cache-hit, cache-write and output priced separately at that step's own time), and a «Usage & cost» dialog with a stacked cost-trend chart (day / week / month), a paged per-step usage history (with a dedicated cache-hit column), and a total-cost hero
 - **Zero-config default** — 13 segments ship enabled; everything else is a checkbox away
 - **Clean takeover** — the plugin's bar shadows the built-in `stats` cell at lower priority: while loaded it renders, when unloaded the built-in line returns untouched
 - **Bilingual UI** — client locale strings ship for English and Chinese, following the DSH locale system
@@ -38,7 +38,7 @@ The status bar replaces the built-in stats line with live session telemetry (sta
 | Item | Value |
 |---|---|
 | DSH versions | `0.1.0-rc.5` (mainline `master`) — earlier RCs may work but are not verified |
-| Last verified | 2026-08-15 |
+| Last verified | 2026-08-16 |
 | Runtime | Node ≥ 22 (host) + modern browser (client); no external services |
 | Peer relation | Coexists with `@linxin666/dsh-live-stats` — both serve the `liveTokenUsage` key; the session-projection registry keeps the first registrant (one unit, no duplicate rows) |
 
@@ -50,8 +50,8 @@ The status bar replaces the built-in stats line with live session telemetry (sta
 # From a local checkout (profile assembly; `web` is a hardcoded alias for `--profile web`)
 dsh plugin --profile web add ../dsh-status-bar
 
-# Or via the npm package
-dsh plugin --profile web add @dsh-external/dsh-status-bar
+# Or from the GitHub repository
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 
 # Or runtime injection without a restart (developer workflow)
 #   dev_inject_plugin / dsh-super-injector → point at this repository
@@ -62,7 +62,7 @@ Then start/restart DSH Web. No configuration is required — the bar appears wit
 ### Upgrade
 
 ```sh
-dsh plugin --profile web update @dsh-external/dsh-status-bar   # or `update ../dsh-status-bar` for a local checkout
+dsh plugin --profile web update github:Starlight-bananice/dsh-status-bar   # or `update ../dsh-status-bar` for a local checkout
 ```
 
 ### Disable
@@ -73,7 +73,7 @@ dsh plugin --profile web update @dsh-external/dsh-status-bar   # or `update ../d
 ### Uninstall
 
 ```sh
-dsh plugin --profile web remove @dsh-external/dsh-status-bar
+dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
 ```
 
 Removal restores the built-in stats line automatically (shadow cell released). **Data left behind:** browser `localStorage` (`dsh.statusBar.v1`) and the host usage file (see [Permissions & data](#permissions--data)) are not deleted — remove them manually if you want a clean slate.
@@ -91,7 +91,7 @@ Removal restores the built-in stats line automatically (shadow cell released). *
    # optional: enable peak/off-peak with DeepSeek's official windows 09:00–12:00, 14:00–18:00
    ```
 
-   The bar then shows e.g. `≈¥0.0123` for the current session, re-priced automatically when you switch sessions/models. Click the chart button next to the gear to open the usage & cost dialog (stat cards, rate card, paged usage history, cost-trend chart with ‹ › period navigation).
+   The bar then shows e.g. `≈¥0.0123` for the current session; the figure is the sum of each model's usage × that model's own price (so switching models mid-session prices each part with its own rate). Click the chart button next to the gear to open the usage & cost dialog (stat cards, rate card, a paged usage history — 20 rows per page, up to 10 pages — with input / cache-hit / output / cost columns, and a per-model cost-trend chart with ‹ › period navigation).
 
 ## Configuration
 
@@ -128,7 +128,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Context | context-window occupancy % | `contextPressure` |
 | Throughput TPS | live generation rate (default on) | `liveTokenUsage` projection — folded from `assistant/chunk` in real time; block-aware estimation (~4 chars/token + block/role framing, re-priced at `block-end`, EWMA against burst flushes), exact once the provider reports usage; 0 while the session is not generating |
 | Session time | wall clock, ticks while running | `turnTimings` |
-| Cost estimate | ≈¥0.0123 (off by default) | `tokenUsage` × the model's effective price |
+| Cost estimate | ≈¥0.0123 (off by default) | `sessionUsage` projection — each model's usage × its own effective price (flat or peak/off-peak at `now`), summed across models |
 | Jobs | running background jobs | `jobsBySession` |
 | Queue | queued messages | snapshot `queue` |
 | Errors | failed/retried/over-limit count (>0 only) | node fold |
@@ -149,7 +149,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Bar does not appear | Master switch off → enable it in Settings → Plugins → Status Bar, or via the gear menu. `localStorage` cleared? Config resets to defaults. |
 | TPS segment is 0 / blank | No stream has started yet, or the stream is between retries. The measurement window restarts on each `llm/retry`; the carried rate never goes blank after the first stream. |
 | TPS conflicts with another plugin | If `@linxin666/dsh-live-stats` is loaded, the registry keeps whichever registered first for the shared `liveTokenUsage` key — one unit, no duplicate rows. |
-| Cost estimate missing | The model is not in the price book → add it in Settings → Plugins → Status Bar → Model price book. Costs are estimates at the book's flat rates, not provider billing. |
+| Cost estimate missing | None of the session's models is in the price book (or they are all zero-priced) → add them in Settings → Plugins → Status Bar → Model price book. Costs are estimated at the book's rates (per model, flat or peak/off-peak), not provider billing. |
 | Usage chart is empty | No assistant messages with provider-reported usage in the period yet, or `DSH_HOME` points elsewhere than expected (check `usage.jsonl` location above). |
 | UI looks broken after an upgrade | Hard-refresh the browser (stale client bundle) and verify the plugin version in Settings. |
 

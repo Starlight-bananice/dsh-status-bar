@@ -52,7 +52,7 @@
  * replay, restore, and the persisted projection cache all reproduce the same
  * values — no wall clock enters the state.
  *
- * @module @dsh-external/dsh-status-bar/live-rate
+ * @module @Starlight-bananice/dsh-status-bar/live-rate
  */
 
 import { z } from 'zod'

@@ -18,7 +18,7 @@
 
 - **17 个可开关、可排序的信息段** —— 状态点、模型、标题、工作区、Agent 预设、轮次与步数、模型/工具耗时、TTFT 与解码速度、缓存命中率、Token、上下文占用、实时 TPS、会话时长、费用估算、后台任务、队列、错误
 - **实时吞吐（TPS）** —— host 侧投影逐块折叠 `assistant/chunk` 事件，流式生成期间速度随分块实时刷新；无需轮询，无需外部 live-stats 插件
-- **费用估算 + 用户维护的模型价格手册** —— 每个模型独立的价格与峰/谷时段，切换会话自动按该会话模型重新计价；「用量与费用」弹窗内置堆叠费用趋势图（日/周/月）
+- **费用估算 + 用户维护的模型价格手册** —— 每个模型独立的价格与峰/谷时段，**每条消息/每一步按实际产出它的模型计费**（输入、缓存命中、缓存写入、输出四类分别计价，峰谷按该步发生时刻取价）；「用量与费用」弹窗内置堆叠费用趋势图（日/周/月）、分页的逐步用量历史（含独立的缓存命中列）与总成本。
 - **零配置开箱即用** —— 13 个信息段默认开启，其余勾选即得
 - **干净的接管机制** —— 插件底栏以低优先级同 id 遮蔽内置 `stats` 单元格：加载期间由其渲染，卸载后内置统计行自动恢复，互不污染
 - **双语界面** —— 客户端文案内置英文与中文，遵循 DSH locale 体系
@@ -38,7 +38,7 @@
 | 项目 | 说明 |
 |---|---|
 | DSH 版本 | `0.1.0-rc.5`（mainline `master`）——更早的 RC 可能可用但未经验证 |
-| 最后验证日期 | 2026-08-15 |
+| 最后验证日期 | 2026-08-16 |
 | 运行环境 | Node ≥ 22（host）+ 现代浏览器（client）；无外部服务依赖 |
 | 共存关系 | 可与 `@linxin666/dsh-live-stats` 共存——双方都提供 `liveTokenUsage` 键，投影注册表只保留先注册者（同键单单元，不会重复显示） |
 
@@ -50,8 +50,8 @@
 # 从本地目录装配（profile 级；`web` 是 `--profile web` 的内置别名）
 dsh plugin --profile web add ../dsh-status-bar
 
-# 或通过 npm 包
-dsh plugin --profile web add @dsh-external/dsh-status-bar
+# 或从 GitHub 仓库安装
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 
 # 或免重启的运行时注入（开发流程）
 #   dev_inject_plugin / dsh-super-injector → 指向本仓库
@@ -62,7 +62,7 @@ dsh plugin --profile web add @dsh-external/dsh-status-bar
 ### 升级
 
 ```sh
-dsh plugin --profile web update @dsh-external/dsh-status-bar   # 本地目录则 update ../dsh-status-bar
+dsh plugin --profile web update github:Starlight-bananice/dsh-status-bar   # 本地目录则 update ../dsh-status-bar
 ```
 
 ### 禁用
@@ -73,7 +73,7 @@ dsh plugin --profile web update @dsh-external/dsh-status-bar   # 本地目录则
 ### 卸载
 
 ```sh
-dsh plugin --profile web remove @dsh-external/dsh-status-bar
+dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
 ```
 
 卸载后内置统计行自动恢复（遮蔽单元格被释放）。**数据残留说明：** 浏览器 `localStorage`（`dsh.statusBar.v1`）与 host 侧用量文件（见 [Permissions & data](#permissions--data权限与数据)）不会自动删除——需要彻底清除时请手动删除。
@@ -91,7 +91,7 @@ dsh plugin --profile web remove @dsh-external/dsh-status-bar
    # 可选：启用峰谷计价，默认使用 DeepSeek 官方时段 09:00–12:00、14:00–18:00
    ```
 
-   底栏随即显示如 `≈¥0.0123` 的当前会话费用，切换会话/模型时自动重新计价。点击齿轮旁的图表按钮可打开「用量与费用」弹窗（统计卡、费率卡、分页用量历史、可 ‹ › 翻页的费用趋势图）。
+   底栏随即显示如 `≈¥0.0123` 的当前会话费用；该数字为**各模型用量 × 各自价格**之和（会话中途切换模型时，各段按各自价格分别计费）。点击齿轮旁的图表按钮可打开「用量与费用」弹窗（统计卡、费率卡、分页的用量历史——每页 20 条、最多 10 页，含输入/缓存命中/输出/成本列，以及可 ‹ › 翻页、按模型分色的费用趋势图）。
 
 ## Configuration（配置）
 
@@ -128,7 +128,7 @@ dsh plugin --profile web remove @dsh-external/dsh-status-bar
 | 上下文 | 上下文窗口占用 % | `contextPressure` |
 | 实时 TPS | 当前生成速率（默认开启） | `liveTokenUsage` 投影——实时折叠 `assistant/chunk`；分块感知估算（约 4 字符/token + 块/角色框架开销，`block-end` 时按整块重定价，EWMA 抗突发冲刷），provider 上报用量后转为精确值；会话停止时显示 0 |
 | 会话时长 | 挂钟时间，运行时走动 | `turnTimings` |
-| 费用估算 | ≈¥0.0123（默认关闭） | `tokenUsage` × 该模型生效价格 |
+| 费用估算 | ≈¥0.0123（默认关闭） | `sessionUsage` 投影——每个模型的用量 × 其自身生效价格（平峰或峰谷，按当前时刻），跨模型求和 |
 | 后台任务 | 运行中的后台任务 | `jobsBySession` |
 | 队列 | 排队中的消息 | snapshot `queue` |
 | 错误 | 失败/重试/超限计数（仅 >0 显示） | node 折叠 |
@@ -149,7 +149,7 @@ dsh plugin --profile web remove @dsh-external/dsh-status-bar
 | 底栏不显示 | 总开关被关闭 → 在 设置 → 插件 → 状态栏 或齿轮菜单中开启。`localStorage` 被清空？配置已重置为默认。 |
 | TPS 段为 0 / 空白 | 尚无流式输出，或流处于重试间隔。每次 `llm/retry` 会重启测量窗口；首个流之后保留的速率不会再变空白。 |
 | TPS 与其他插件冲突 | 若同时加载 `@linxin666/dsh-live-stats`，注册表保留先注册者对 `liveTokenUsage` 键的占用——同键单单元，不会出现重复行。 |
-| 费用估算缺失 | 模型不在价格手册中 → 在 设置 → 插件 → 状态栏 → 模型价格手册 中添加。费用按手册固定费率估算，非 provider 账单。 |
+| 费用估算缺失 | 会话所用模型都未在价格手册中（或价格全为 0）→ 在 设置 → 插件 → 状态栏 → 模型价格手册 中添加。费用按手册费率估算（逐模型、平峰或峰谷），非 provider 账单。 |
 | 用量图表为空 | 该时段内还没有带 provider 用量上报的 assistant 消息，或 `DSH_HOME` 指向了别处（核对上面 `usage.jsonl` 的位置）。 |
 | 升级后界面异常 | 硬刷新浏览器（客户端 bundle 可能过期），并在设置中核对插件版本。 |
 

@@ -748,7 +748,7 @@ const STYLES = `
 
 function installStyles(): () => void {
   const style = document.createElement('style')
-  style.dataset.plugin = '@dsh-external/dsh-status-bar'
+  style.dataset.plugin = '@Starlight-bananice/dsh-status-bar'
   style.textContent = STYLES
   document.head.appendChild(style)
   return () => { style.remove() }
