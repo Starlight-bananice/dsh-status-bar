@@ -1,5 +1,4 @@
 node_modules/
-lib/
 .client-build/
 *.tgz
 *.log

@@ -55,6 +55,8 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 ```
 > **Note:** pnpm fetches GitHub-hosted packages from `codeload.github.com` and does not read your git proxy config. If the install hangs or fails with a network error (e.g. `error (23)`), export an HTTP(S) proxy: `export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890` and re-run.
 
+> **Since v0.1.5:** the built `lib/` artifacts are committed to the repository — a git install is ready to run immediately, **no build step required**. Add the plugin, restart DSH Web, done. (Installs of ≤ v0.1.4 shipped no `lib/`, so they needed the manual build described under Development.)
+
 ```sh
 # Or runtime injection without a restart (developer workflow)
 #   dev_inject_plugin / dsh-super-injector → point at this repository
@@ -163,11 +165,12 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 ## Development
 
 ```sh
-npm run build          # junction links + host tsc + client typecheck
-npm run build:client   # tsdown → lib/client.js (ModuleLoader bundle)
+pnpm install            # devDependencies only (typescript / tsdown / @types); npm peers are provided by the DSH runtime closure and intentionally not declared
+npm run build:client    # tsdown → lib/client.js (ModuleLoader bundle)
+npm run build           # junction links + host tsc + client typecheck (needs DSH_CHECKOUT pointing at a dsh source checkout)
 ```
 
-The build needs `DSH_CHECKOUT` (or a common-path probe) pointing at a dsh source checkout; client typechecking resolves against the checkout's `lib/types` through junction links. Host-side sources are plain TypeScript (Cordis plugin), client sources are React + the DSH client UI slots.
+Build artifacts under `lib/` are **committed** (since v0.1.5), so plain git installs work without any build step; the commands above exist to refresh the artifacts before a release. `npm run build` / `typecheck:client` need `DSH_CHECKOUT` (or the common-path probe) — client typechecking resolves against the checkout's `lib/types` through junction links. Host-side sources are plain TypeScript (Cordis plugin), client sources are React + the DSH client UI slots.
 
 **Contributing:** fork the repository, branch off `main`, and open a PR — small, focused changes with a clear description are preferred. Report bugs via Issues with the DSH version, browser, and a minimal repro.
 

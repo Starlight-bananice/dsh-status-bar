@@ -55,6 +55,8 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 ```
 > **提示：** pnpm 从 `codeload.github.com` 下载 GitHub 包，且不读取你的 git 代理配置。若安装卡住或报网络错误（如 `error (23)`），请先导出代理再重试：`export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890`。
 
+> **自 v0.1.5 起：** 构建产物 `lib/` 已随仓库提交 —— git 安装后开箱即用，**无需任何构建步骤**；`dsh plugin add` 完成后重启 DSH Web 即可。（≤ v0.1.4 的安装不含 `lib/`，需要按 Development 一节手动构建。）
+
 ```sh
 # 或免重启的运行时注入（开发流程）
 #   dev_inject_plugin / dsh-super-injector → 指向本仓库
@@ -163,11 +165,12 @@ dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
 ## Development（开发）
 
 ```sh
-npm run build          # junction 链接 + host tsc + 客户端类型检查
-npm run build:client   # tsdown → lib/client.js（ModuleLoader bundle）
+pnpm install            # 仅安装 devDependencies（typescript/tsdown/@types）；npm peer 依赖由 DSH 运行时闭包提供，故不在 package.json 声明
+npm run build:client    # tsdown → lib/client.js（ModuleLoader bundle）
+npm run build           # junction 链接 + host tsc + 客户端类型检查（需要 DSH_CHECKOUT 指向 dsh 源码检出）
 ```
 
-构建需要 `DSH_CHECKOUT`（或公共路径探测）指向 dsh 源码检出；客户端类型检查通过 junction 链接解析到检出目录的 `lib/types`。host 侧为纯 TypeScript（Cordis 插件），客户端为 React + DSH client UI slots。
+自 v0.1.5 起 `lib/` 构建产物**已提交入库**，普通 git 安装开箱即用，无需构建；上面的命令用于发版前刷新产物。`npm run build` / `typecheck:client` 需要 `DSH_CHECKOUT`（或公共路径探测），客户端类型检查通过 junction 链接解析到检出目录的 `lib/types`。host 侧为纯 TypeScript（Cordis 插件），客户端为 React + DSH client UI slots。
 
 **贡献方式：** fork 本仓库，从 `main` 开分支，提交 PR——欢迎小而聚焦、描述清晰的改动。Bug 请在 Issues 中提交，附上 DSH 版本、浏览器与最小复现步骤。
 
