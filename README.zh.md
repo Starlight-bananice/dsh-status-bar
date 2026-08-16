@@ -55,7 +55,7 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 
 # 或安装固定版本的 release tgz —— 不可变且带版本号（随每个 GitHub
 # release 附带；适合不便直连 git 仓库的场景）
-dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.5/starlight-bananice-dsh-status-bar-0.1.5.tgz
+dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.6/starlight-bananice-dsh-status-bar-0.1.6.tgz
 ```
 > **提示：** pnpm 从 `codeload.github.com` 下载 GitHub 包，且不读取你的 git 代理配置。若安装卡住或报网络错误（如 `error (23)`），请先导出代理再重试：`export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890`。
 
