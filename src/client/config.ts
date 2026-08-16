@@ -128,7 +128,7 @@ export interface StatusBarConfig {
 
 export const DEFAULT_CONFIG: StatusBarConfig = {
   enabled: true,
-  wrap: false,
+  wrap: true,
   segments: SEGMENT_IDS.filter(id => SEGMENT_META[id].defaultOn),
   cost: {
     currency: 'CNY',
