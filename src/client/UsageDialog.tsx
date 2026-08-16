@@ -13,6 +13,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type { SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
 import { modelConfigFor, setModelConfig, useStatusBarConfig, type ModelConfig } from './config.ts'
 import { effectivePrices, usageHistory, type UsageHistoryRow } from './segments.ts'
+import { costBreakdown } from './session-usage-cost.ts'
 import { formatCost, formatTokens } from './format.ts'
 import { hourInTimezone, inAnyPeakWindow, peakWindowsLabel } from './timezone.ts'
 import { NS } from './locales.ts'
@@ -55,6 +56,7 @@ function HistoryTable({ rows, currency, t }: {
               <th>{t('usage.time')}</th>
               <th>{t('usage.model')}</th>
               <th className="num">{t('usage.input')}</th>
+              <th className="num">{t('usage.cacheRead')}</th>
               <th className="num">{t('usage.output')}</th>
               <th className="num">{t('usage.cost')}</th>
             </tr>
@@ -72,6 +74,10 @@ function HistoryTable({ rows, currency, t }: {
                 </td>
                 <td className="model">{row.model ?? '—'}</td>
                 <td className="num">{formatTokens(row.input)}</td>
+                <td className="num">
+                  {formatTokens(row.cacheRead)}
+                  {row.cacheWrite > 0 && ` +${t('usage.cacheWrite')} ${formatTokens(row.cacheWrite)}`}
+                </td>
                 <td className="num">{formatTokens(row.output)}</td>
                 <td className="num">
                   {row.cost === null ? '—' : formatCost(row.cost, currency)}
@@ -126,26 +132,30 @@ export const UsageDialogEntry = memo(function UsageDialogEntry(props: UsageDialo
 
   const usage = useProjection('tokenUsage')
   const pressure = useProjection('contextPressure')
+  const sessionUsage = useProjection('sessionUsage')
+  const now = Date.now()
+  const breakdown = costBreakdown(sessionUsage, config.cost, now)
   const sessionModelValue = useProjection('sessionModel')
   const sessionModel = sessionModelValue !== undefined && sessionModelValue.model !== null
     ? { provider: sessionModelValue.provider ?? 'unknown', model: sessionModelValue.model }
     : undefined
   const summary: SessionSummary | undefined = useSessions(state => state.byId[sessionId])
 
-  const now = Date.now()
   const modelConfig = modelConfigFor(config.cost, sessionModel?.model)
   const prices = effectivePrices(sessionModel ?? null, config.cost, now)
-  const rows = usageHistory(session, sessionModel ?? null, prices, 20)
+  const rows = usageHistory(session, sessionUsage, config.cost, 20)
 
   const billedInput = usage === undefined
     ? 0
     : usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
-  const totalCost = usage !== undefined && prices !== null
-    ? (usage.uncachedInputTokens * prices.input
-      + usage.cacheReadTokens * prices.cacheRead
-      + usage.cacheWriteTokens * prices.cacheWrite
-      + usage.outputTokens * prices.output) / 1_000_000
-    : null
+  const totalCost = breakdown !== null
+    ? breakdown.total
+    : usage !== undefined && prices !== null
+      ? (usage.uncachedInputTokens * prices.input
+        + usage.cacheReadTokens * prices.cacheRead
+        + usage.cacheWriteTokens * prices.cacheWrite
+        + usage.outputTokens * prices.output) / 1_000_000
+      : null
 
   const usedTokens = pressure?.projectedTokens ?? pressure?.pressureTokens
   const contextPercent = usedTokens !== undefined && pressure?.contextWindow !== undefined

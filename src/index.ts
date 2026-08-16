@@ -10,6 +10,9 @@
  *     the projection registry (DSH's live-state channel), so the bar's TPS
  *     segment tracks the stream chunk by chunk without any external
  *     live-stats plugin;
+ *  The `sessionUsage` projection — whole-session per-model usage plus a
+ *  per-step model/time ledger — lets the client price each step with the
+ *  model that actually produced it (and that model's peak schedule).
  *  3. a usage ledger — subscribes the global `session/event` feed, persists
  *     every assistant message's provider-reported token usage to a JSONL
  *     file in the plugin's local data directory (~/.dsh/dsh-status-bar),
@@ -26,6 +29,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { sessionModelProjectionDefinition } from './model-projection.ts'
 import { liveTokenUsageProjectionDefinition } from './live-rate.ts'
+import { sessionUsageProjectionDefinition } from './session-usage.ts'
 import { ledgerDataDir, UsageLedger, type UsagePeriod } from './usage-ledger.ts'
 
 export const name = '@dsh-external/dsh-status-bar'
@@ -50,6 +54,9 @@ const PERIODS: readonly UsagePeriod[] = ['day', 'week', 'month']
 /** Register the model projection, the live rate projection, the usage ledger, and the chart API. */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.sessionProjections.register(sessionModelProjectionDefinition), 'dsh-status-bar: sessionModel projection')
+  // Whole-session per-model usage (+ per-step model/time ledger) for accurate
+  // per-model / per-step cost pricing client-side.
+  ctx.effect(() => ctx.sessionProjections.register(sessionUsageProjectionDefinition), 'dsh-status-bar: sessionUsage projection')
   // Live rate: the same registry delivers the streaming throughput to the bar
   // (see live-rate.ts for the fold and its carried-rate semantics).
   ctx.effect(() => ctx.sessionProjections.register(liveTokenUsageProjectionDefinition), 'dsh-status-bar: liveTokenUsage projection')

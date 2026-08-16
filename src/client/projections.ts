@@ -19,5 +19,19 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     liveTokenUsage?: { tokensPerSecond?: number }
     /** Last assistant-message model identity (host-side fold; absent until a message lands). */
     sessionModel?: { provider: string | null; model: string | null; updatedAt: number | null }
+    /** Whole-session per-model usage plus the per-step model/time ledger (host-side fold). */
+    sessionUsage?: {
+      models: Record<string, {
+        input: number
+        cacheRead: number
+        cacheWrite: number
+        output: number
+      }>
+      bySeq: Record<string, {
+        provider: string
+        model: string
+        time: number
+      }>
+    }
   }
 }

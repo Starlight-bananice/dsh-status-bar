@@ -104,6 +104,7 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
   const sessionModel = sessionModelValue !== undefined && sessionModelValue.model !== null
     ? { provider: sessionModelValue.provider ?? 'unknown', model: sessionModelValue.model }
     : undefined
+  const sessionUsage = useProjection('sessionUsage')
   const jobs: readonly JobView[] | undefined = useSessions(
     state => state.jobsBySession[sessionId],
   )
@@ -124,7 +125,7 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
 
   const stats = projected ?? deriveWindowStats(session)
   const views = config.enabled
-    ? buildSegments({ session, stats, usage, pressure, liveRate, sessionModel, jobs, summary, now }, config, t)
+    ? buildSegments({ session, stats, usage, pressure, liveRate, sessionModel, sessionUsage, jobs, summary, now }, config, t)
     : []
   const line = views.map(view => view.text).join(' | ')
 

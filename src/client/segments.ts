@@ -20,6 +20,7 @@ import { modelConfigFor, type CostPrices, type StatusBarConfig, type SegmentId }
 import { formatCost, formatDuration, formatTokens, formatTokensPerSecond } from './format.ts'
 import type { NS } from './locales.ts'
 import { hourInTimezone, inAnyPeakWindow } from './timezone.ts'
+import { costBreakdown, stepCost, stepModel, type SessionUsageClientState } from './session-usage-cost.ts'
 
 export type StatusState = 'running' | 'idle' | 'error'
 
@@ -46,6 +47,8 @@ export interface SegmentSource {
   liveRate: number | undefined
   /** Last model identity from the host-side sessionModel projection. */
   sessionModel: ModelIdentity | undefined
+  /** Per-model usage + per-step model map from the host sessionUsage projection. */
+  sessionUsage: SessionUsageClientState | undefined
   jobs: readonly JobView[] | undefined
   summary: SessionSummary | undefined
   /** Wall-clock now (ticked by the bar while it renders sessionTime). */
@@ -224,20 +227,25 @@ export interface UsageHistoryRow {
   time: number
   model: string | null
   input: number
+  /** Cache-hit tokens of this step (priced at the model's cacheRead rate). */
+  cacheRead: number
+  /** Cache-write tokens of this step (priced at the model's cacheWrite rate). */
+  cacheWrite: number
   output: number
   cost: number | null
 }
 
 /**
  * Recent per-step usage rows from the settled window: the last assistant
- * nodes that carried provider-reported usage, newest first. Cost is
- * estimated with the CURRENT model's effective prices (usage records do not
- * carry their own per-step price, and the whole session shares the model).
+ * nodes that carried provider-reported usage, newest first. Each step's cost
+ * is priced with the model that ACTUALLY produced that step (from the host
+ * `sessionUsage` fold, node provenance as fallback), applying that model's
+ * own price-book entry (with peak/off-peak) at the step's wall-clock time.
  */
 export function usageHistory(
   session: ConversationSnapshot,
-  model: ModelIdentity | null,
-  prices: { input: number; cacheRead: number; cacheWrite: number; output: number } | null,
+  state: SessionUsageClientState | undefined,
+  cost: CostPrices,
   limit = 60,
 ): UsageHistoryRow[] {
   const rows: UsageHistoryRow[] = []
@@ -247,22 +255,26 @@ export function usageHistory(
     const usage = node.usage as { inputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number; outputTokens?: number } | null | undefined
     if (usage === null || typeof usage !== 'object') continue
     const input = (usage.inputTokens ?? 0) + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0)
+    const cacheRead = usage.cacheReadTokens ?? 0
+    const cacheWrite = usage.cacheWriteTokens ?? 0
     const output = usage.outputTokens ?? 0
     if (input <= 0 && output <= 0) continue
+    const model = stepModel(state, node.seq, node.provenance)
+    const costRow = stepCost(state, node.seq, node.provenance, {
+      inputTokens: usage.inputTokens ?? 0,
+      cacheReadTokens: cacheRead,
+      cacheWriteTokens: cacheWrite,
+      outputTokens: output,
+    }, cost)
     rows.push({
       seq: node.seq,
       time: node.time,
       model: model?.model ?? null,
       input,
+      cacheRead,
+      cacheWrite,
       output,
-      cost: prices === null
-        ? null
-        : costOfUsage({
-          uncachedInputTokens: usage.inputTokens ?? 0,
-          cacheReadTokens: usage.cacheReadTokens ?? 0,
-          cacheWriteTokens: usage.cacheWriteTokens ?? 0,
-          outputTokens: output,
-        }, prices),
+      cost: costRow,
     })
   }
   return rows
@@ -367,6 +379,14 @@ function segmentView(
       return elapsed === null ? null : { id, text: t('bar.sessionTime', { duration: formatDuration(elapsed) }) }
     }
     case 'cost': {
+      if (source.sessionUsage !== undefined) {
+        const breakdown = costBreakdown(source.sessionUsage, config.cost, now)
+        if (breakdown !== null && breakdown.total > 0) {
+          return { id, text: t('bar.cost', { cost: formatCost(breakdown.total, config.cost.currency) }) }
+        }
+        return null
+      }
+      // 以下为回退路径：客户端独立装配（无 host 投影）时保持原行为
       if (usage === undefined) return null
       const model = lastModel(session, source.sessionModel)
       const prices = effectivePrices(model, config.cost, now)
