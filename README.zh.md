@@ -52,7 +52,10 @@ dsh plugin --profile web add ../dsh-status-bar
 
 # 或从 GitHub 仓库安装
 dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+```
+> **提示：** pnpm 从 `codeload.github.com` 下载 GitHub 包，且不读取你的 git 代理配置。若安装卡住或报网络错误（如 `error (23)`），请先导出代理再重试：`export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890`。
 
+```sh
 # 或免重启的运行时注入（开发流程）
 #   dev_inject_plugin / dsh-super-injector → 指向本仓库
 ```

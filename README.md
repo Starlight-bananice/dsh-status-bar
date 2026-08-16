@@ -52,7 +52,10 @@ dsh plugin --profile web add ../dsh-status-bar
 
 # Or from the GitHub repository
 dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+```
+> **Note:** pnpm fetches GitHub-hosted packages from `codeload.github.com` and does not read your git proxy config. If the install hangs or fails with a network error (e.g. `error (23)`), export an HTTP(S) proxy: `export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890` and re-run.
 
+```sh
 # Or runtime injection without a restart (developer workflow)
 #   dev_inject_plugin / dsh-super-injector → point at this repository
 ```
