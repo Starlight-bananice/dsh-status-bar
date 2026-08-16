@@ -1,6 +1,6 @@
 {
   "name": "@dsh-external/dsh-status-bar",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "DSH 底栏管理插件：可配置的会话状态栏（状态/模型/上下文/费用/任务/队列等 17 个段），替换内置统计行，带设置页与快速开关菜单。Configurable session status bar for the DSH composer dock, with a management settings page and a quick-toggle menu.",
   "keywords": [
     "deepseek",
