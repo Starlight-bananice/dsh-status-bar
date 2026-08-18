@@ -2,7 +2,7 @@
 
 > The native DeepSeek Harness bottom status bar packs everything into one long line — so much that parts of it get **truncated** on narrow windows. dsh-status-bar brings a **near-native status-bar experience**: a fully configurable 17-segment bar showing exactly the content you want — status, model, context pressure, token burn, **real-time generation speed**, cost estimates, jobs and queue — toggled and reordered in two clicks, with useful options like multi-line wrapping and per-model cost estimation. It replaces the built-in stats line and removes itself cleanly when unloaded.
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
+[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -40,8 +40,8 @@ The status bar replaces the built-in stats line with near-native live session te
 
 | Item | Value |
 |---|---|
-| DSH versions | `0.1.0-rc.5` (mainline `master`) — earlier RCs may work but are not verified |
-| Last verified | 2026-08-16 |
+| DSH versions | `0.1.0-rc.7` (mainline `master`) — earlier RCs may work but are not verified |
+| Last verified | 2026-08-19 |
 | Runtime | Node ≥ 22 (host) + modern browser (client); no external services |
 | Peer relation | Coexists with `@linxin666/dsh-live-stats` — both serve the `liveTokenUsage` key; the session-projection registry keeps the first registrant (one unit, no duplicate rows) |
 
