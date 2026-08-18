@@ -28,6 +28,8 @@
 
 The status bar replaces the built-in stats line with near-native live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page — including a per-model price book with peak/off-peak pricing:
 
+![Status bar live view](assets/screenshot-status-bar-en.png)
+
 ![Settings & model price book](assets/screenshot-settings-page-en.png)
 
 | Toggle & reorder on the go (segment list) | Usage & cost dialog (trend chart · stat cards · history) |
