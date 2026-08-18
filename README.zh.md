@@ -1,6 +1,6 @@
 # dsh-status-bar · 一眼看清你的 agent 正在做什么
 
-> 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 输入栏打造的 **17 段可配置会话状态栏**。替换内置统计行，实时呈现会话状态、当前模型、上下文压力、Token 消耗、**生成速度（TPS）**、费用估算、任务与队列——两下点击即可开关与排序，卸载后内置统计行原样恢复。
+> [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 原生底部状态栏一条线塞下太多内容，窗口一窄就会被**截断**。本插件带来**接近原生体验的可配置状态栏**：17 个信息段任你挑选——会话状态、当前模型、上下文压力、Token 消耗、**生成速度（TPS）**、费用估算、任务与队列等，两下点击即可开关与排序；还提供换行显示、实时 TPS、逐模型费用估算等多项实用选项。替换内置统计行，卸载后原样恢复。
 
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
 
@@ -10,22 +10,23 @@
 
 ## Overview（概览）
 
-**解决的问题：** DSH 输入栏只有一条固定的统计行——看不到当前模型、上下文窗口还剩多少、Token 流式生成多快、这个会话花了多少钱，更没法按自己的习惯排列这些信息。
+**解决的问题：** DSH 原生底部状态栏是一条超长的固定统计行——内容一多就被**截断**，窗口变窄时尤其明显；既看不到当前模型、上下文窗口还剩多少、Token 流式生成多快、这个会话花了多少钱，也没法按自己的习惯排列这些信息。
 
 **适合谁：** 日常重度使用 DSH 的开发者与团队——希望不离开输入栏就能掌握会话实时状态，又不想额外开一个监视器的人。
 
 **核心能力：**
 
-- **17 个可开关、可排序的信息段** —— 状态点、模型、标题、工作区、Agent 预设、轮次与步数、模型/工具耗时、TTFT 与解码速度、缓存命中率、Token、上下文占用、实时 TPS、会话时长、费用估算、后台任务、队列、错误
+- **接近原生体验 · 17 个可开关、可排序的信息段** —— 状态点、模型、标题、工作区、Agent 预设、轮次与步数、模型/工具耗时、TTFT 与解码速度、缓存命中率、Token、上下文占用、实时 TPS、会话时长、费用估算、后台任务、队列、错误
 - **实时吞吐（TPS）** —— host 侧投影逐块折叠 `assistant/chunk` 事件，流式生成期间速度随分块实时刷新；无需轮询，无需外部 live-stats 插件
 - **费用估算 + 用户维护的模型价格手册** —— 每个模型独立的价格与峰/谷时段，**每条消息/每一步按实际产出它的模型计费**（输入、缓存命中、缓存写入、输出四类分别计价，峰谷按该步发生时刻取价）；「用量与费用」弹窗内置堆叠费用趋势图（日/周/月）、分页的逐步用量历史（含独立的缓存命中列）与总成本。
 - **零配置开箱即用** —— 13 个信息段默认开启，其余勾选即得
+- **多项实用选项** —— 换行显示（内容再多也不会被截断省略）、实时 TPS、逐模型费用估算（支持峰谷计价）、币种切换（CNY / USD）、齿轮快捷开关菜单与专属设置页、一键重置
 - **干净的接管机制** —— 插件底栏以低优先级同 id 遮蔽内置 `stats` 单元格：加载期间由其渲染，卸载后内置统计行自动恢复，互不污染
 - **双语界面** —— 客户端文案内置英文与中文，遵循 DSH locale 体系
 
 ## 界面预览
 
-底栏替换内置统计行，实时呈现会话状态（状态 · 模型 · 轮次 · 上下文 · 缓存 · TPS · 会话时长 · 任务 · 队列 · 错误），通过专属设置页统一管理——含逐模型价格手册（支持峰谷计价）：
+以接近原生的底栏体验替换内置统计行，实时呈现会话状态（状态 · 模型 · 轮次 · 上下文 · 缓存 · TPS · 会话时长 · 任务 · 队列 · 错误），通过专属设置页统一管理——含逐模型价格手册（支持峰谷计价）：
 
 ![设置页与模型价格手册](assets/screenshot-settings-page-zh.png)
 

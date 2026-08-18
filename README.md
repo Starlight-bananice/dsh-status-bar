@@ -1,6 +1,6 @@
 # dsh-status-bar · Know what your agent is doing — at a glance
 
-> A 17-segment, fully configurable status bar for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) composer dock. Replaces the built-in stats line with live session intelligence: status, model, context pressure, token burn, **real-time generation speed**, cost estimates, jobs and queue — toggled and reordered in two clicks, and it removes itself cleanly when you unload it.
+> The native DeepSeek Harness bottom status bar packs everything into one long line — so much that parts of it get **truncated** on narrow windows. dsh-status-bar brings a **near-native status-bar experience**: a fully configurable 17-segment bar showing exactly the content you want — status, model, context pressure, token burn, **real-time generation speed**, cost estimates, jobs and queue — toggled and reordered in two clicks, with useful options like multi-line wrapping and per-model cost estimation. It replaces the built-in stats line and removes itself cleanly when unloaded.
 
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.5-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
 
@@ -10,22 +10,23 @@
 
 ## Overview
 
-**The problem:** the DSH composer shows one thin, fixed stats line. You cannot see the current model, how full the context window is, how fast tokens are streaming, or what a session has cost — and there is no way to arrange that information the way you work.
+**The problem:** the native DSH bottom status bar is one long, fixed line — the more it shows, the more it overflows, and on narrow windows parts of it get **truncated**. You cannot see the current model, how full the context window is, how fast tokens are streaming, or what a session has cost — and there is no way to arrange that information the way you work.
 
 **Who it is for:** power users and teams running DSH daily — anyone who wants live session telemetry without leaving the composer, and without running a separate monitor.
 
 **What it does:**
 
-- **17 toggleable, reorderable segments** — status dot, model, title, workspace, agent preset, turns & steps, model/tool time, TTFT & decode speed, cache-hit rate, tokens, context pressure, live TPS, session time, cost estimate, jobs, queue, errors
+- **Near-native experience, fully yours** — 17 toggleable, reorderable segments: status dot, model, title, workspace, agent preset, turns & steps, model/tool time, TTFT & decode speed, cache-hit rate, tokens, context pressure, live TPS, session time, cost estimate, jobs, queue, errors
 - **Live throughput (TPS)** — a host-side projection folds every `assistant/chunk` event, so the speed updates chunk by chunk while streaming; no polling, no external live-stats plugin
 - **Cost estimation with a user-maintained model price book** — per-model rates, per-model peak/off-peak schedules, **each message/step priced with the model that actually produced it** (input, cache-hit, cache-write and output priced separately at that step's own time), and a «Usage & cost» dialog with a stacked cost-trend chart (day / week / month), a paged per-step usage history (with a dedicated cache-hit column), and a total-cost hero
 - **Zero-config default** — 13 segments ship enabled; everything else is a checkbox away
+- **Useful options** — multi-line wrapping (so nothing gets truncated), live TPS, per-model cost estimation with peak/off-peak pricing, currency choice (CNY / USD), a quick-toggle gear menu, and a dedicated settings page with one-click reset
 - **Clean takeover** — the plugin's bar shadows the built-in `stats` cell at lower priority: while loaded it renders, when unloaded the built-in line returns untouched
 - **Bilingual UI** — client locale strings ship for English and Chinese, following the DSH locale system
 
 ## Screenshots
 
-The status bar replaces the built-in stats line with live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page — including a per-model price book with peak/off-peak pricing:
+The status bar replaces the built-in stats line with near-native live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page — including a per-model price book with peak/off-peak pricing:
 
 ![Settings & model price book](assets/screenshot-settings-page-en.png)
 
