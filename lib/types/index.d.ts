@@ -20,10 +20,10 @@
  *     `/status-bar/api/usage`.
  *
  * All pricing stays client-side (the user-maintained model price book).
- * @module dsh-status-bar
+ * @module @bananiceee/dsh-status-bar
  */
 import type { Context } from 'cordis';
-export declare const name = "dsh-status-bar";
+export declare const name = "@bananiceee/dsh-status-bar";
 export declare const inject: string[];
 /** Register the model projection, the live rate projection, the usage ledger, and the chart API. */
 export declare function apply(ctx: Context): void;

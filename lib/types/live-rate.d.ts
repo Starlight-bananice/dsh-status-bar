@@ -52,7 +52,7 @@
  * replay, restore, and the persisted projection cache all reproduce the same
  * values — no wall clock enters the state.
  *
- * @module dsh-status-bar/live-rate
+ * @module @bananiceee/dsh-status-bar/live-rate
  */
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection';
 /** Approximate text characters represented by one token (dsh-live-stats default). */
