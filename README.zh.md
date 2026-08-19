@@ -66,6 +66,8 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 # release 附带；适合不便直连 git 仓库的场景）
 dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.6/starlight-bananice-dsh-status-bar-0.1.6.tgz
 ```
+> **提示：** pnpm 11 对发布未满 24 小时的包默认拒绝安装——若当天刚发布的新版本被拒，在 `dsh plugin add` 命令末尾追加 `--config.minimumReleaseAge=0`。
+
 > **提示：** pnpm 从 `codeload.github.com` 下载 GitHub 包，且不读取你的 git 代理配置。若安装卡住或报网络错误（如 `error (23)`），请先导出代理再重试：`export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890`。
 
 > **自 v0.1.5 起：** 构建产物 `lib/` 已随仓库提交 —— git 安装后开箱即用，**无需任何构建步骤**；`dsh plugin add` 完成后重启 DSH Web 即可。（≤ v0.1.4 的安装不含 `lib/`，需要按 Development 一节手动构建。）

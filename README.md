@@ -66,6 +66,8 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 # GitHub release; handy when git access to the repo is awkward)
 dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.6/starlight-bananice-dsh-status-bar-0.1.6.tgz
 ```
+> **Note:** pnpm 11 enforces a 24h `minimumReleaseAge` for freshly published packages — if a same-day release is rejected, append `--config.minimumReleaseAge=0` to the `dsh plugin add` command.
+
 > **Note:** pnpm fetches GitHub-hosted packages from `codeload.github.com` and does not read your git proxy config. If the install hangs or fails with a network error (e.g. `error (23)`), export an HTTP(S) proxy: `export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890` and re-run.
 
 > **Since v0.1.5:** the built `lib/` artifacts are committed to the repository — a git install is ready to run immediately, **no build step required**. Add the plugin, restart DSH Web, done. (Installs of ≤ v0.1.4 shipped no `lib/`, so they needed the manual build described under Development.)
