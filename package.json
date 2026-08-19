@@ -1,6 +1,14 @@
 {
   "name": "@bananiceee/dsh-status-bar",
-  "version": "0.1.7",
+  "version": "0.1.8",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Starlight-bananice/dsh-status-bar.git"
+  },
+  "homepage": "https://github.com/Starlight-bananice/dsh-status-bar#readme",
+  "bugs": {
+    "url": "https://github.com/Starlight-bananice/dsh-status-bar/issues"
+  },
   "description": "DSH 底栏管理插件：原生底部状态栏超长、内容易被截断；本插件提供接近原生体验的可配置状态栏——17 个信息段任意开关/排序，并带换行、实时 TPS、费用估算等多项实用选项。The native DSH bottom status bar is too long and parts get truncated; this plugin delivers a near-native, fully configurable status bar — 17 toggleable/reorderable segments, plus useful options such as wrapping, live TPS and cost estimation.",
   "keywords": [
     "deepseek",

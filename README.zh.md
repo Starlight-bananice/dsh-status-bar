@@ -54,7 +54,7 @@
 dsh plugin --profile web add @bananiceee/dsh-status-bar
 
 # 或钉住 npm 上的确切版本
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.1.7
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.1.8
 
 # 从本地目录装配（profile 级；`web` 是 `--profile web` 的内置别名）
 dsh plugin --profile web add ../dsh-status-bar
@@ -64,7 +64,7 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 
 # 或安装固定版本的 release tgz —— 不可变且带版本号（随每个 GitHub
 # release 附带；适合不便直连 git 仓库的场景）
-dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.6/starlight-bananice-dsh-status-bar-0.1.6.tgz
+dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.1.8/bananiceee-dsh-status-bar-0.1.8.tgz
 ```
 > **提示：** pnpm 11 对发布未满 24 小时的包默认拒绝安装——若当天刚发布的新版本被拒，在 `dsh plugin add` 命令末尾追加 `--config.minimumReleaseAge=0`。
 
@@ -86,13 +86,13 @@ dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-ba
 dsh plugin --profile web update @bananiceee/dsh-status-bar
 
 # 或重新 add 钉住的版本
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.1.7
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.1.8
 
 # github: 安装——pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到
 # 的 commit，`dsh plugin update github:...` 只会提示 "Already up to date"
 # 并保留旧构建。升级请用重新 add：
 dsh plugin --profile web remove @bananiceee/dsh-status-bar
-dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.7
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.8
 ```
 
 ### 禁用
