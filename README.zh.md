@@ -2,7 +2,7 @@
 
 > [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 原生底部状态栏一条线塞下太多内容，窗口一窄就会被**截断**。本插件带来**接近原生体验的可配置状态栏**：17 个信息段任你挑选——会话状态、当前模型、上下文压力、Token 消耗、**生成速度（TPS）**、费用估算、任务与队列等，两下点击即可开关与排序；还提供换行显示、实时 TPS、逐模型费用估算等多项实用选项。替换内置统计行，卸载后原样恢复。
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
+[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/dsh-status-bar)](https://www.npmjs.com/package/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -43,13 +43,19 @@
 | DSH 版本 | `0.1.0-rc.7`（mainline `master`）——更早的 RC 可能可用但未经验证 |
 | 最后验证日期 | 2026-08-19 |
 | 运行环境 | Node ≥ 22（host）+ 现代浏览器（client）；无外部服务依赖 |
-| 共存关系 | 可与 `@linxin666/dsh-live-stats` 共存——双方都提供 `liveTokenUsage` 键，投影注册表只保留先注册者（同键单单元，不会重复显示） |
+| 共存关系 | 可与 `@linxin666/dsh-live-stats` 共存——双方都提供 `liveTokenUsage` 键，投影注册表只保留先注册者（同键单单元，不会重复显示）；`stateVersion` 需与对方一致（当前同为 4），不一致时本插件会跳过自身注册并沿用共享键，不会启动失败 |
 
 ## Install / Uninstall（安装 / 卸载）
 
 ### 安装
 
 ```sh
+# 从 npm 安装（推荐）
+dsh plugin --profile web add dsh-status-bar
+
+# 或钉住 npm 上的确切版本
+dsh plugin --profile web add dsh-status-bar@0.1.7
+
 # 从本地目录装配（profile 级；`web` 是 `--profile web` 的内置别名）
 dsh plugin --profile web add ../dsh-status-bar
 
@@ -74,14 +80,17 @@ dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-ba
 ### 升级
 
 ```sh
-# pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到的 commit ——
-# `dsh plugin --profile web update github:...` 只会提示 "Already up to date"
-# 并保留旧构建。升级请用重新 add：
-dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
-dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+# npm 安装：直接更新到 registry 上的最新版本
+dsh plugin --profile web update dsh-status-bar
 
-# 或固定显式 ref（tag / 分支 / commit）
-dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.5
+# 或重新 add 钉住的版本
+dsh plugin --profile web add dsh-status-bar@0.1.7
+
+# github: 安装——pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到
+# 的 commit，`dsh plugin update github:...` 只会提示 "Already up to date"
+# 并保留旧构建。升级请用重新 add：
+dsh plugin --profile web remove dsh-status-bar
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.7
 ```
 
 ### 禁用
@@ -92,7 +101,7 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.5
 ### 卸载
 
 ```sh
-dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
+dsh plugin --profile web remove dsh-status-bar
 ```
 
 卸载后内置统计行自动恢复（遮蔽单元格被释放）。**数据残留说明：** 浏览器 `localStorage`（`dsh.statusBar.v1`）与 host 侧用量文件（见 [Permissions & data](#permissions--data权限与数据)）不会自动删除——需要彻底清除时请手动删除。
@@ -167,11 +176,11 @@ dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
 |---|---|
 | 底栏不显示 | 总开关被关闭 → 在 设置 → 插件 → 状态栏 或齿轮菜单中开启。`localStorage` 被清空？配置已重置为默认。 |
 | TPS 段为 0 / 空白 | 尚无流式输出，或流处于重试间隔。每次 `llm/retry` 会重启测量窗口；首个流之后保留的速率不会再变空白。 |
-| TPS 与其他插件冲突 | 若同时加载 `@linxin666/dsh-live-stats`，注册表保留先注册者对 `liveTokenUsage` 键的占用——同键单单元，不会出现重复行。 |
+| TPS 与其他插件冲突 | 若同时加载 `@linxin666/dsh-live-stats`，注册表保留先注册者对 `liveTokenUsage` 键的占用——同键单单元，不会出现重复行。若对方的 `stateVersion` 与本地不一致（如对方已升到 4），注册表会拒绝同键共享；本插件捕获该错误并跳过自身注册（沿用对方单元，TPS 数据来源不变），仅记录一条 warning。 |
 | 费用估算缺失 | 会话所用模型都未在价格手册中（或价格全为 0）→ 在 设置 → 插件 → 状态栏 → 模型价格手册 中添加。费用按手册费率估算（逐模型、平峰或峰谷），非 provider 账单。 |
 | 用量图表为空 | 该时段内还没有带 provider 用量上报的 assistant 消息，或 `DSH_HOME` 指向了别处（核对上面 `usage.jsonl` 的位置）。 |
 | 升级后界面异常 | 硬刷新浏览器（客户端 bundle 可能过期），并在设置中核对插件版本。 |
-| 不确定当前装的是哪个版本 | 在 profile 目录（macOS/Linux）执行：`node -p "require(process.env.HOME + '/.dsh/profiles/web/node_modules/@Starlight-bananice/dsh-status-bar/package.json').version"`。低于 `v0.1.5`？按上面的升级步骤重装——不带 ref 的 `github:` 安装会一直保留安装时解析到的 commit。 |
+| 不确定当前装的是哪个版本 | 在 profile 目录（macOS/Linux）执行：`node -p "require(process.env.HOME + '/.dsh/profiles/web/node_modules/dsh-status-bar/package.json').version"`。低于 `v0.1.5`？按上面的升级步骤重装。 |
 
 **日志位置：** 插件自身不写日志文件——host 侧诊断信息出现在 DSH web 进程输出（profile 日志）中；客户端问题可在浏览器 devtools 控制台查看。
 

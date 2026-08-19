@@ -20,7 +20,7 @@
  *     `/status-bar/api/usage`.
  *
  * All pricing stays client-side (the user-maintained model price book).
- * @module @Starlight-bananice/dsh-status-bar
+ * @module dsh-status-bar
  */
 
 import type { Context } from 'cordis'
@@ -32,7 +32,7 @@ import { liveTokenUsageProjectionDefinition } from './live-rate.ts'
 import { sessionUsageProjectionDefinition } from './session-usage.ts'
 import { ledgerDataDir, UsageLedger, type UsagePeriod } from './usage-ledger.ts'
 
-export const name = '@Starlight-bananice/dsh-status-bar'
+export const name = 'dsh-status-bar'
 export const inject = ['sessionProjections', 'webServer']
 
 function json(res: import('node:http').ServerResponse, status: number, body: unknown): void {
@@ -58,8 +58,30 @@ export function apply(ctx: Context): void {
   // per-model / per-step cost pricing client-side.
   ctx.effect(() => ctx.sessionProjections.register(sessionUsageProjectionDefinition), 'dsh-status-bar: sessionUsage projection')
   // Live rate: the same registry delivers the streaming throughput to the bar
-  // (see live-rate.ts for the fold and its carried-rate semantics).
-  ctx.effect(() => ctx.sessionProjections.register(liveTokenUsageProjectionDefinition), 'dsh-status-bar: liveTokenUsage projection')
+  // (see live-rate.ts for the fold and its carried-rate semantics). The
+  // `liveTokenUsage` key is SHARED with peer plugins (e.g.
+  // @linxin666/dsh-live-stats inside @linxin666/dsh-web-ui-all): the registry
+  // keeps the first registrant's unit and ref-counts later ones, but only when
+  // their `stateVersion` matches — a mismatched re-registration throws. That
+  // refusal is a coexistence signal, not a fault: the peer's unit serves the
+  // same view (`tokensPerSecond`), so we skip our own registration and keep
+  // rendering from the shared key instead of letting the whole plugin fail.
+  ctx.effect(() => {
+    try {
+      return ctx.sessionProjections.register(liveTokenUsageProjectionDefinition)
+    } catch (error) {
+      if (
+        error instanceof Error
+        && error.message.includes('liveTokenUsage')
+        && error.message.includes('refusing to share it with stateVersion')
+      ) {
+        ctx.logger.warn('[dsh-status-bar] liveTokenUsage is already registered by another plugin at a different stateVersion; sharing its projection instead of registering our own unit')
+        // No-op disposer: nothing was registered (the peer's unit serves the key).
+        return () => {}
+      }
+      throw error
+    }
+  }, 'dsh-status-bar: liveTokenUsage projection')
 
   // Usage ledger: fold every committed assistant message into the local
   // JSONL-backed hourly store (feed listener + API share the instance).

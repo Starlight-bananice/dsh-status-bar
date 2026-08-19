@@ -52,7 +52,7 @@
  * replay, restore, and the persisted projection cache all reproduce the same
  * values — no wall clock enters the state.
  *
- * @module @Starlight-bananice/dsh-status-bar/live-rate
+ * @module dsh-status-bar/live-rate
  */
 
 import { z } from 'zod'
@@ -466,5 +466,11 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
     }
   },
   view: state => state.tokensPerSecond === null ? {} : { tokensPerSecond: state.tokensPerSecond },
-  stateVersion: 3,
+  // The state shape is unchanged since 3, but this number doubles as the
+  // shared-key coordination version: the projection registry refuses to share
+  // `liveTokenUsage` across registrants with differing stateVersions, and the
+  // coexisting peer (@linxin666/dsh-live-stats, mounted by dsh-web-ui-all)
+  // registers the same key at 4 — so this must track the peer, or status-bar's
+  // registration throws and the plugin fails to load.
+  stateVersion: 4,
 }

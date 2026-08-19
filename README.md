@@ -2,7 +2,7 @@
 
 > The native DeepSeek Harness bottom status bar packs everything into one long line — so much that parts of it get **truncated** on narrow windows. dsh-status-bar brings a **near-native status-bar experience**: a fully configurable 17-segment bar showing exactly the content you want — status, model, context pressure, token burn, **real-time generation speed**, cost estimates, jobs and queue — toggled and reordered in two clicks, with useful options like multi-line wrapping and per-model cost estimation. It replaces the built-in stats line and removes itself cleanly when unloaded.
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin)
+[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/dsh-status-bar)](https://www.npmjs.com/package/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -43,13 +43,19 @@ The status bar replaces the built-in stats line with near-native live session te
 | DSH versions | `0.1.0-rc.7` (mainline `master`) — earlier RCs may work but are not verified |
 | Last verified | 2026-08-19 |
 | Runtime | Node ≥ 22 (host) + modern browser (client); no external services |
-| Peer relation | Coexists with `@linxin666/dsh-live-stats` — both serve the `liveTokenUsage` key; the session-projection registry keeps the first registrant (one unit, no duplicate rows) |
+| Peer relation | Coexists with `@linxin666/dsh-live-stats` — both serve the `liveTokenUsage` key; the session-projection registry keeps the first registrant (one unit, no duplicate rows). The `stateVersion` must match the peer (both 4 today); on mismatch this plugin skips its own registration and shares the peer's unit instead of failing to load |
 
 ## Install / Uninstall
 
 ### Install
 
 ```sh
+# From npm (recommended)
+dsh plugin --profile web add dsh-status-bar
+
+# Or pin an exact npm version
+dsh plugin --profile web add dsh-status-bar@0.1.7
+
 # From a local checkout (profile assembly; `web` is a hardcoded alias for `--profile web`)
 dsh plugin --profile web add ../dsh-status-bar
 
@@ -74,14 +80,17 @@ Then start/restart DSH Web. No configuration is required — the bar appears wit
 ### Upgrade
 
 ```sh
-# pnpm pins a ref-less `github:` dependency to the commit resolved at install
-# time, so `dsh plugin update github:...` reports "Already up to date" and
-# keeps the old build. Upgrade with a re-add:
-dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
-dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
+# npm installs: update straight to the latest registry version
+dsh plugin --profile web update dsh-status-bar
 
-# or pin an explicit ref (tag / branch / commit)
-dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.5
+# or re-add a pinned version
+dsh plugin --profile web add dsh-status-bar@0.1.7
+
+# github: installs — pnpm pins a ref-less `github:` dependency to the commit
+# resolved at install time, so `dsh plugin update github:...` reports
+# "Already up to date" and keeps the old build. Upgrade with a re-add:
+dsh plugin --profile web remove dsh-status-bar
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.7
 ```
 
 ### Disable
@@ -92,7 +101,7 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.1.5
 ### Uninstall
 
 ```sh
-dsh plugin --profile web remove @Starlight-bananice/dsh-status-bar
+dsh plugin --profile web remove dsh-status-bar
 ```
 
 Removal restores the built-in stats line automatically (shadow cell released). **Data left behind:** browser `localStorage` (`dsh.statusBar.v1`) and the host usage file (see [Permissions & data](#permissions--data)) are not deleted — remove them manually if you want a clean slate.
@@ -167,11 +176,11 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 |---|---|
 | Bar does not appear | Master switch off → enable it in Settings → Plugins → Status Bar, or via the gear menu. `localStorage` cleared? Config resets to defaults. |
 | TPS segment is 0 / blank | No stream has started yet, or the stream is between retries. The measurement window restarts on each `llm/retry`; the carried rate never goes blank after the first stream. |
-| TPS conflicts with another plugin | If `@linxin666/dsh-live-stats` is loaded, the registry keeps whichever registered first for the shared `liveTokenUsage` key — one unit, no duplicate rows. |
+| TPS conflicts with another plugin | If `@linxin666/dsh-live-stats` is loaded, the registry keeps whichever registered first for the shared `liveTokenUsage` key — one unit, no duplicate rows. If the peer's `stateVersion` differs from ours (e.g. theirs is already 4), the registry refuses to share the key; this plugin catches that error, skips its own registration (the peer's unit keeps serving TPS), and only logs a warning. |
 | Cost estimate missing | None of the session's models is in the price book (or they are all zero-priced) → add them in Settings → Plugins → Status Bar → Model price book. Costs are estimated at the book's rates (per model, flat or peak/off-peak), not provider billing. |
 | Usage chart is empty | No assistant messages with provider-reported usage in the period yet, or `DSH_HOME` points elsewhere than expected (check `usage.jsonl` location above). |
 | UI looks broken after an upgrade | Hard-refresh the browser (stale client bundle) and verify the plugin version in Settings. |
-| Can't tell which version is installed | From the profile directory (macOS/Linux): `node -p "require(process.env.HOME + '/.dsh/profiles/web/node_modules/@Starlight-bananice/dsh-status-bar/package.json').version"`. Behind `v0.1.5`? Re-apply the Upgrade steps — a ref-less `github:` install keeps the commit resolved at install time. |
+| Can't tell which version is installed | From the profile directory (macOS/Linux): `node -p "require(process.env.HOME + '/.dsh/profiles/web/node_modules/dsh-status-bar/package.json').version"`. Behind `v0.1.5`? Re-apply the Upgrade steps. |
 
 **Logs:** the plugin writes no log files of its own — host-side diagnostics appear in the DSH web process output (profile logs); client-side issues surface in the browser devtools console.
 
