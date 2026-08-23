@@ -143,6 +143,31 @@ const liveTokenUsageSchema = z.object({
   tokensPerSecond: z.number().nonnegative().optional(),
 }).strict()
 
+// The persisted fold state's schema (the new split contract validates STATE
+// here; the wire block below validates only the client view). Blocks are a
+// plain array with holes — undefined slots restore from the persisted cache.
+const outputBlockSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('text'), characters: z.number() }),
+  z.object({ kind: z.literal('reasoning'), characters: z.number() }),
+  z.object({ kind: z.literal('tool-call'), nameCharacters: z.number(), argumentCharacters: z.number() }),
+  z.object({ kind: z.literal('fixed'), tokens: z.number() }),
+])
+
+const liveRateStateSchema = z.object({
+  turn: z.number().nullable(),
+  step: z.number().nullable(),
+  firstOutputTime: z.number().nullable(),
+  latestOutputTime: z.number().nullable(),
+  prevOutputTime: z.number().nullable(),
+  outputTokens: z.number(),
+  estimated: z.boolean(),
+  tokensPerSecond: z.number().nullable(),
+  blocks: z.array(outputBlockSchema.optional()),
+  pricedTokens: z.number(),
+  pricedBlocks: z.number(),
+  exact: z.boolean(),
+}).strict()
+
 /** The current stream is the one tracked by the fold state. */
 function isTracked(state: LiveRateState, turn: number, step: number): boolean {
   return state.turn === turn && state.step === step
@@ -322,6 +347,10 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     /** Real-time generation throughput (tok/s) of the current stream, folded by this plugin's host side. */
     liveTokenUsage: LiveTokenUsageView
   }
+  interface SessionProjectionStateMap {
+    /** Host fold state: stream counters, block slots and the carried rate. */
+    liveTokenUsage: LiveRateState
+  }
 }
 
 /**
@@ -329,10 +358,9 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
  * for the unit spec). Only `assistant/chunk` and the stream-closing events
  * change the state reference, so the change feed stays quiet otherwise.
  */
-export const liveTokenUsageProjectionDefinition:
-ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
+export const liveTokenUsageProjectionDefinition = {
   key: 'liveTokenUsage',
-  schema: liveTokenUsageSchema,
+  stateSchema: liveRateStateSchema,
   init: () => ({
     turn: null,
     step: null,
@@ -465,7 +493,10 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
         return state
     }
   },
-  view: state => state.tokensPerSecond === null ? {} : { tokensPerSecond: state.tokensPerSecond },
+  wire: {
+    viewSchema: liveTokenUsageSchema,
+    view: state => state.tokensPerSecond === null ? {} : { tokensPerSecond: state.tokensPerSecond },
+  },
   // The state shape is unchanged since 3, but this number doubles as the
   // shared-key coordination version: the projection registry refuses to share
   // `liveTokenUsage` across registrants with differing stateVersions, and the
@@ -473,4 +504,4 @@ ProjectionDefinition<'liveTokenUsage', LiveRateState> = {
   // registers the same key at 4 — so this must track the peer, or status-bar's
   // registration throws and the plugin fails to load.
   stateVersion: 4,
-}
+} satisfies ProjectionDefinition<'liveTokenUsage', LiveRateState>

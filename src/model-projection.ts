@@ -25,12 +25,15 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     /** Last assistant-message model identity (null until the first message). */
     sessionModel: SessionModelState
   }
+  interface SessionProjectionStateMap {
+    /** Host fold state; the wire value is the state itself (view = identity). */
+    sessionModel: SessionModelState
+  }
 }
 
-export const sessionModelProjectionDefinition:
-ProjectionDefinition<'sessionModel', SessionModelState> = {
+export const sessionModelProjectionDefinition = {
   key: 'sessionModel',
-  schema: sessionModelSchema,
+  stateSchema: sessionModelSchema,
   init: () => ({ provider: null, model: null, updatedAt: null }),
   apply: (state, event) => {
     if (event.type !== 'assistant/message') return state
@@ -40,6 +43,6 @@ ProjectionDefinition<'sessionModel', SessionModelState> = {
     if (provider === state.provider && model === state.model) return state
     return { provider, model, updatedAt: event.time }
   },
-  view: state => state,
+  wire: { viewSchema: sessionModelSchema, view: state => state },
   stateVersion: 1,
-}
+} satisfies ProjectionDefinition<'sessionModel', SessionModelState>

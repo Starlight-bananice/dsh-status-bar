@@ -47,12 +47,15 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     /** Whole-session per-model usage plus the per-step model/time ledger. */
     sessionUsage: SessionUsageState
   }
+  interface SessionProjectionStateMap {
+    /** Host fold state; the wire value is the state itself (view = identity). */
+    sessionUsage: SessionUsageState
+  }
 }
 
-export const sessionUsageProjectionDefinition:
-ProjectionDefinition<'sessionUsage', SessionUsageState> = {
+export const sessionUsageProjectionDefinition = {
   key: 'sessionUsage',
-  schema: sessionUsageSchema,
+  stateSchema: sessionUsageSchema,
   init: () => ({ models: {}, bySeq: {} }),
   apply: (state, event) => {
     if (event.type !== 'assistant/message') return state
@@ -74,6 +77,6 @@ ProjectionDefinition<'sessionUsage', SessionUsageState> = {
       bySeq: { ...state.bySeq, [String(event.seq)]: { provider, model, time: event.time } },
     }
   },
-  view: state => state,
+  wire: { viewSchema: sessionUsageSchema, view: state => state },
   stateVersion: 1,
-}
+} satisfies ProjectionDefinition<'sessionUsage', SessionUsageState>

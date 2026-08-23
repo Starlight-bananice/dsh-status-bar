@@ -2,7 +2,7 @@
 
 > [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 原生底部状态栏一条线塞下太多内容，窗口一窄就会被**截断**。本插件带来**接近原生体验的可配置状态栏**：17 个信息段任你挑选——会话状态、当前模型、上下文压力、Token 消耗、**生成速度（TPS）**、费用估算、任务与队列等，两下点击即可开关与排序；还提供换行显示、实时 TPS、逐模型费用估算等多项实用选项。替换内置统计行，卸载后原样恢复。
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![DSH](https://img.shields.io/badge/DSH-0.1.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -40,7 +40,7 @@
 
 | 项目 | 说明 |
 |---|---|
-| DSH 版本 | `0.1.0-rc.7`（mainline `master`）——更早的 RC 可能可用但未经验证 |
+| DSH 版本 | `0.1.1-rc.2`（mainline `master`）——更早的 RC 可能可用但未经验证 |
 | 最后验证日期 | 2026-08-19 |
 | 运行环境 | Node ≥ 22（host）+ 现代浏览器（client）；无外部服务依赖 |
 | 共存关系 | 可与 `@linxin666/dsh-live-stats` 共存——双方都提供 `liveTokenUsage` 键，投影注册表只保留先注册者（同键单单元，不会重复显示）；`stateVersion` 需与对方一致（当前同为 4），不一致时本插件会跳过自身注册并沿用共享键，不会启动失败 |

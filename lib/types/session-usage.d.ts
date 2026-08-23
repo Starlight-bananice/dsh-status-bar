@@ -7,7 +7,7 @@
  * client price each step with the model that actually produced it, applying
  * that model's peak/off-peak schedule at the step's own time.
  */
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection';
+import { z } from 'zod';
 /** Aggregated whole-session usage per model plus a per-step model ledger. */
 export interface SessionUsageState {
     /** model id → whole-session token buckets across that model's messages. */
@@ -29,5 +29,46 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
         /** Whole-session per-model usage plus the per-step model/time ledger. */
         sessionUsage: SessionUsageState;
     }
+    interface SessionProjectionStateMap {
+        /** Host fold state; the wire value is the state itself (view = identity). */
+        sessionUsage: SessionUsageState;
+    }
 }
-export declare const sessionUsageProjectionDefinition: ProjectionDefinition<'sessionUsage', SessionUsageState>;
+export declare const sessionUsageProjectionDefinition: {
+    key: "sessionUsage";
+    stateSchema: z.ZodObject<{
+        models: z.ZodRecord<z.ZodString, z.ZodObject<{
+            input: z.ZodNumber;
+            cacheRead: z.ZodNumber;
+            cacheWrite: z.ZodNumber;
+            output: z.ZodNumber;
+        }, z.core.$strict>>;
+        bySeq: z.ZodRecord<z.ZodString, z.ZodObject<{
+            provider: z.ZodString;
+            model: z.ZodString;
+            time: z.ZodNumber;
+        }, z.core.$strict>>;
+    }, z.core.$strict>;
+    init: () => {
+        models: {};
+        bySeq: {};
+    };
+    apply: (state: NoInfer<SessionUsageState>, event: import("@deepseek-ai/dsh-session").SessionEvent) => SessionUsageState;
+    wire: {
+        viewSchema: z.ZodObject<{
+            models: z.ZodRecord<z.ZodString, z.ZodObject<{
+                input: z.ZodNumber;
+                cacheRead: z.ZodNumber;
+                cacheWrite: z.ZodNumber;
+                output: z.ZodNumber;
+            }, z.core.$strict>>;
+            bySeq: z.ZodRecord<z.ZodString, z.ZodObject<{
+                provider: z.ZodString;
+                model: z.ZodString;
+                time: z.ZodNumber;
+            }, z.core.$strict>>;
+        }, z.core.$strict>;
+        view: (state: NoInfer<SessionUsageState>) => SessionUsageState;
+    };
+    stateVersion: number;
+};

@@ -54,7 +54,7 @@
  *
  * @module @bananiceee/dsh-status-bar/live-rate
  */
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection';
+import { z } from 'zod';
 /** Approximate text characters represented by one token (dsh-live-stats default). */
 export declare const CHARS_PER_TOKEN = 4;
 /** Fixed framing tokens charged per content block (structure the tokenizer prices). */
@@ -134,11 +134,70 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
         /** Real-time generation throughput (tok/s) of the current stream, folded by this plugin's host side. */
         liveTokenUsage: LiveTokenUsageView;
     }
+    interface SessionProjectionStateMap {
+        /** Host fold state: stream counters, block slots and the carried rate. */
+        liveTokenUsage: LiveRateState;
+    }
 }
 /**
  * The `liveTokenUsage` unit registered on `ctx.sessionProjections` (exported
  * for the unit spec). Only `assistant/chunk` and the stream-closing events
  * change the state reference, so the change feed stays quiet otherwise.
  */
-export declare const liveTokenUsageProjectionDefinition: ProjectionDefinition<'liveTokenUsage', LiveRateState>;
+export declare const liveTokenUsageProjectionDefinition: {
+    key: "liveTokenUsage";
+    stateSchema: z.ZodObject<{
+        turn: z.ZodNullable<z.ZodNumber>;
+        step: z.ZodNullable<z.ZodNumber>;
+        firstOutputTime: z.ZodNullable<z.ZodNumber>;
+        latestOutputTime: z.ZodNullable<z.ZodNumber>;
+        prevOutputTime: z.ZodNullable<z.ZodNumber>;
+        outputTokens: z.ZodNumber;
+        estimated: z.ZodBoolean;
+        tokensPerSecond: z.ZodNullable<z.ZodNumber>;
+        blocks: z.ZodArray<z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"text">;
+            characters: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            kind: z.ZodLiteral<"reasoning">;
+            characters: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            kind: z.ZodLiteral<"tool-call">;
+            nameCharacters: z.ZodNumber;
+            argumentCharacters: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            kind: z.ZodLiteral<"fixed">;
+            tokens: z.ZodNumber;
+        }, z.core.$strip>], "kind">>>;
+        pricedTokens: z.ZodNumber;
+        pricedBlocks: z.ZodNumber;
+        exact: z.ZodBoolean;
+    }, z.core.$strict>;
+    init: () => {
+        turn: null;
+        step: null;
+        firstOutputTime: null;
+        latestOutputTime: null;
+        prevOutputTime: null;
+        outputTokens: number;
+        estimated: false;
+        tokensPerSecond: null;
+        blocks: never[];
+        pricedTokens: number;
+        pricedBlocks: number;
+        exact: false;
+    };
+    apply: (state: NoInfer<LiveRateState>, event: import("@deepseek-ai/dsh-session").SessionEvent) => LiveRateState;
+    wire: {
+        viewSchema: z.ZodObject<{
+            tokensPerSecond: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strict>;
+        view: (state: NoInfer<LiveRateState>) => {
+            tokensPerSecond?: undefined;
+        } | {
+            tokensPerSecond: number;
+        };
+    };
+    stateVersion: number;
+};
 export {};
