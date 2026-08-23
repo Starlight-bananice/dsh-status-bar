@@ -5,11 +5,14 @@
  *  1. the `sessionModel` projection — the last model that produced an
  *     assistant message (the client snapshot's assistant nodes carry no
  *     provenance, so the bar reads this fold instead);
- *  2. the `liveTokenUsage` projection — the real-time generation rate of the
- *     current stream, folded from the `assistant/chunk` feed and served over
- *     the projection registry (DSH's live-state channel), so the bar's TPS
- *     segment tracks the stream chunk by chunk without any external
- *     live-stats plugin;
+ *  2. the `statusBarLiveTokenUsage` projection — the real-time generation
+ *     rate of the current stream, folded from the `assistant/chunk` feed and
+ *     served over the projection registry (DSH's live-state channel), so the
+ *     bar's TPS segment tracks the stream chunk by chunk without any external
+ *     live-stats plugin. The key is plugin-private on purpose: the
+ *     dsh-web-ui family's `@linxin666/dsh-live-stats` serves the separate
+ *     `liveTokenUsage` key, and the two never contend for the same registry
+ *     entry — enabling both plugins keeps each TPS display working.
  *  The `sessionUsage` projection — whole-session per-model usage plus a
  *  per-step model/time ledger — lets the client price each step with the
  *  model that actually produced it (and that model's peak schedule).

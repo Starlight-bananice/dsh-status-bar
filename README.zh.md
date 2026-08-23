@@ -43,7 +43,7 @@
 | DSH 版本 | `0.1.1-rc.2`（mainline `master`）——更早的 RC 可能可用但未经验证 |
 | 最后验证日期 | 2026-08-19 |
 | 运行环境 | Node ≥ 22（host）+ 现代浏览器（client）；无外部服务依赖 |
-| 共存关系 | 可与 `@linxin666/dsh-live-stats` 共存——双方都提供 `liveTokenUsage` 键，投影注册表只保留先注册者（同键单单元，不会重复显示）；`stateVersion` 需与对方一致（当前同为 4），不一致时本插件会跳过自身注册并沿用共享键，不会启动失败 |
+| 共存关系 | 与 dsh-web-ui 全家桶的 `@linxin666/dsh-live-stats` 完全独立：本插件使用插件私有投影键 `statusBarLiveTokenUsage`，live-stats 使用另一键 `liveTokenUsage`。键不同——投影注册表同时保留两个单元，与注册先后和 `stateVersion` 均无关，同时启用两个插件时底栏实时 TPS 不会被顶掉 |
 
 ## Install / Uninstall（安装 / 卸载）
 
@@ -156,7 +156,7 @@ dsh plugin --profile web remove @bananiceee/dsh-status-bar
 | 缓存命中 | 提示词缓存命中占比（两位小数，上限 99.99%） | `tokenUsage` |
 | Token | 计费输入/输出总量 | `tokenUsage` |
 | 上下文 | 上下文窗口占用 % | `contextPressure` |
-| 实时 TPS | 当前生成速率（默认开启） | `liveTokenUsage` 投影——实时折叠 `assistant/chunk`；分块感知估算（约 4 字符/token + 块/角色框架开销，`block-end` 时按整块重定价，EWMA 抗突发冲刷），provider 上报用量后转为精确值；会话停止时显示 0 |
+| 实时 TPS | 当前生成速率（默认开启） | `statusBarLiveTokenUsage` 投影（插件私有键）——实时折叠 `assistant/chunk`；分块感知估算（约 4 字符/token + 块/角色框架开销，`block-end` 时按整块重定价，EWMA 抗突发冲刷），provider 上报用量后转为精确值；会话停止时显示 0 |
 | 会话时长 | 挂钟时间，运行时走动 | `turnTimings` |
 | 费用估算 | ≈¥0.0123（默认关闭） | `sessionUsage` 投影——每个模型的用量 × 其自身生效价格（平峰或峰谷，按当前时刻），跨模型求和 |
 | 后台任务 | 运行中的后台任务 | `jobsBySession` |
@@ -178,7 +178,7 @@ dsh plugin --profile web remove @bananiceee/dsh-status-bar
 |---|---|
 | 底栏不显示 | 总开关被关闭 → 在 设置 → 插件 → 状态栏 或齿轮菜单中开启。`localStorage` 被清空？配置已重置为默认。 |
 | TPS 段为 0 / 空白 | 尚无流式输出，或流处于重试间隔。每次 `llm/retry` 会重启测量窗口；首个流之后保留的速率不会再变空白。 |
-| TPS 与其他插件冲突 | 若同时加载 `@linxin666/dsh-live-stats`，注册表保留先注册者对 `liveTokenUsage` 键的占用——同键单单元，不会出现重复行。若对方的 `stateVersion` 与本地不一致（如对方已升到 4），注册表会拒绝同键共享；本插件捕获该错误并跳过自身注册（沿用对方单元，TPS 数据来源不变），仅记录一条 warning。 |
+| TPS 与其他插件冲突 | 设计上不存在——本插件使用自己的 `statusBarLiveTokenUsage` 键；`@linxin666/dsh-live-stats`（若加载）为自己的 UI 使用独立的 `liveTokenUsage` 键。键不同，注册表同时保留两个单元，同时启用两个插件也不会让底栏实时速度消失。 |
 | 费用估算缺失 | 会话所用模型都未在价格手册中（或价格全为 0）→ 在 设置 → 插件 → 状态栏 → 模型价格手册 中添加。费用按手册费率估算（逐模型、平峰或峰谷），非 provider 账单。 |
 | 用量图表为空 | 该时段内还没有带 provider 用量上报的 assistant 消息，或 `DSH_HOME` 指向了别处（核对上面 `usage.jsonl` 的位置）。 |
 | 升级后界面异常 | 硬刷新浏览器（客户端 bundle 可能过期），并在设置中核对插件版本。 |

@@ -42,12 +42,12 @@ function StatusDot({ state }: { state: 'running' | 'idle' | 'error' }) {
 
 /**
  * Trailing-edge throttle for the live TPS figure. The host emits a
- * `liveTokenUsage` projection update on every stream chunk — potentially
- * many times per second — so the bar would otherwise re-render the segment
- * at stream rate. This keeps the displayed value at most one refresh per
- * `intervalMs` while always converging to the latest measurement: a fresh
- * value arriving after a quiet interval shows immediately, otherwise the
- * newest value lands when the interval elapses.
+ * `statusBarLiveTokenUsage` projection update on every stream chunk —
+ * potentially many times per second — so the bar would otherwise re-render
+ * the segment at stream rate. This keeps the displayed value at most one
+ * refresh per `intervalMs` while always converging to the latest measurement:
+ * a fresh value arriving after a quiet interval shows immediately, otherwise
+ * the newest value lands when the interval elapses.
  */
 function useThrottled<T>(value: T, intervalMs: number): T {
   const [display, setDisplay] = useState(value)
@@ -100,8 +100,10 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
   const usage = useProjection('tokenUsage')
   const pressure = useProjection('contextPressure')
   // The live rate is emitted once per stream chunk; throttle the displayed
-  // figure to at most one refresh per 500ms.
-  const liveRate = useThrottled(useProjection('liveTokenUsage')?.tokensPerSecond, 500)
+  // figure to at most one refresh per 500ms. The key is this plugin's own
+  // (never shared with the dsh-web-ui family's separate `liveTokenUsage`
+  // feed), so the bar's speed is independent of which peer plugins are loaded.
+  const liveRate = useThrottled(useProjection('statusBarLiveTokenUsage')?.tokensPerSecond, 500)
   const sessionModelValue = useProjection('sessionModel')
   const sessionModel = sessionModelValue !== undefined && sessionModelValue.model !== null
     ? { provider: sessionModelValue.provider ?? 'unknown', model: sessionModelValue.model }

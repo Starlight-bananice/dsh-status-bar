@@ -43,7 +43,7 @@ export interface SegmentSource {
   stats: SessionStatsProjection | null
   usage: TokenUsageProjection | undefined
   pressure: ContextPressureProjection | undefined
-  /** Live generation rate from this plugin's host-side liveTokenUsage fold (stream estimate, carried while idle). */
+  /** Live generation rate from this plugin's host-side statusBarLiveTokenUsage fold (stream estimate, carried while idle). */
   liveRate: number | undefined
   /** Last model identity from the host-side sessionModel projection. */
   sessionModel: ModelIdentity | undefined

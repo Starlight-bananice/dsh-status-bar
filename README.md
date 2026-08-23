@@ -43,7 +43,7 @@ The status bar replaces the built-in stats line with near-native live session te
 | DSH versions | `0.1.1-rc.2` (mainline `master`) — earlier RCs may work but are not verified |
 | Last verified | 2026-08-19 |
 | Runtime | Node ≥ 22 (host) + modern browser (client); no external services |
-| Peer relation | Coexists with `@linxin666/dsh-live-stats` — both serve the `liveTokenUsage` key; the session-projection registry keeps the first registrant (one unit, no duplicate rows). The `stateVersion` must match the peer (both 4 today); on mismatch this plugin skips its own registration and shares the peer's unit instead of failing to load |
+| Peer relation | Fully independent of `@linxin666/dsh-live-stats` (dsh-web-ui family): this plugin serves its own plugin-private `statusBarLiveTokenUsage` projection key, while live-stats serves the separate `liveTokenUsage` key. Distinct keys — the projection registry keeps both units regardless of registration order or `stateVersion`, so enabling both plugins never displaces the bar's live TPS |
 
 ## Install / Uninstall
 
@@ -156,7 +156,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Cache hit | prompt cache-hit share (2 decimals, capped at 99.99%) | `tokenUsage` |
 | Tokens | billed input/output totals | `tokenUsage` |
 | Context | context-window occupancy % | `contextPressure` |
-| Throughput TPS | live generation rate (default on) | `liveTokenUsage` projection — folded from `assistant/chunk` in real time; block-aware estimation (~4 chars/token + block/role framing, re-priced at `block-end`, EWMA against burst flushes), exact once the provider reports usage; 0 while the session is not generating |
+| Throughput TPS | live generation rate (default on) | `statusBarLiveTokenUsage` projection (plugin-private key) — folded from `assistant/chunk` in real time; block-aware estimation (~4 chars/token + block/role framing, re-priced at `block-end`, EWMA against burst flushes), exact once the provider reports usage; 0 while the session is not generating |
 | Session time | wall clock, ticks while running | `turnTimings` |
 | Cost estimate | ≈¥0.0123 (off by default) | `sessionUsage` projection — each model's usage × its own effective price (flat or peak/off-peak at `now`), summed across models |
 | Jobs | running background jobs | `jobsBySession` |
@@ -178,7 +178,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 |---|---|
 | Bar does not appear | Master switch off → enable it in Settings → Plugins → Status Bar, or via the gear menu. `localStorage` cleared? Config resets to defaults. |
 | TPS segment is 0 / blank | No stream has started yet, or the stream is between retries. The measurement window restarts on each `llm/retry`; the carried rate never goes blank after the first stream. |
-| TPS conflicts with another plugin | If `@linxin666/dsh-live-stats` is loaded, the registry keeps whichever registered first for the shared `liveTokenUsage` key — one unit, no duplicate rows. If the peer's `stateVersion` differs from ours (e.g. theirs is already 4), the registry refuses to share the key; this plugin catches that error, skips its own registration (the peer's unit keeps serving TPS), and only logs a warning. |
+| TPS conflicts with another plugin | None by design — this plugin serves its own `statusBarLiveTokenUsage` key; `@linxin666/dsh-live-stats` (if loaded) serves the separate `liveTokenUsage` key for its own UI. Distinct keys mean the registry keeps both units, so enabling both plugins never stops the bar's live speed. |
 | Cost estimate missing | None of the session's models is in the price book (or they are all zero-priced) → add them in Settings → Plugins → Status Bar → Model price book. Costs are estimated at the book's rates (per model, flat or peak/off-peak), not provider billing. |
 | Usage chart is empty | No assistant messages with provider-reported usage in the period yet, or `DSH_HOME` points elsewhere than expected (check `usage.jsonl` location above). |
 | UI looks broken after an upgrade | Hard-refresh the browser (stale client bundle) and verify the plugin version in Settings. |

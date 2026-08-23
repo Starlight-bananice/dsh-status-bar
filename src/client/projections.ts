@@ -16,7 +16,7 @@ import type {} from '@deepseek-ai/dsh-session-projection/types'
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     /** Live generation throughput (tok/s) served by this plugin's host-side live-rate fold. */
-    liveTokenUsage?: { tokensPerSecond?: number }
+    statusBarLiveTokenUsage?: { tokensPerSecond?: number }
     /** Last assistant-message model identity (host-side fold; absent until a message lands). */
     sessionModel?: { provider: string | null; model: string | null; updatedAt: number | null }
     /** Whole-session per-model usage plus the per-step model/time ledger (host-side fold). */

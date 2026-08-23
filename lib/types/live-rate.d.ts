@@ -1,14 +1,22 @@
 /**
- * `liveTokenUsage` projection unit: the real-time generation rate of the
- * session's CURRENT stream, served to the bar over the session-projection
+ * `statusBarLiveTokenUsage` projection unit: the real-time generation rate of
+ * the session's CURRENT stream, served to the bar over the session-projection
  * channel — DSH's live-state path from host to browser.
+ *
+ * The key is deliberately plugin-private (no other plugin claims it), so the
+ * bar's live rate is fully independent of peer plugins that expose their own
+ * TPS feed (e.g. @linxin666/dsh-live-stats serving the `liveTokenUsage` key
+ * inside the dsh-web-ui family). The two schemes never contend for the same
+ * registry entry: status-bar always registers its own unit under
+ * `statusBarLiveTokenUsage` and the client always reads that key, so enabling
+ * web-ui alongside never displaces this unit nor stops the bar's live speed.
  *
  * The unit folds `assistant/chunk` events as they commit: each output delta
  * (text / reasoning / tool-call) contributes an estimated token count and
  * refreshes the measurement window, so the change feed fires once per chunk
- * and the client's `useProjection('liveTokenUsage')` re-renders the TPS
- * segment while the stream is hot (the bar throttles the displayed figure to
- * at most two refreshes per second). When the provider reports a `usage`
+ * and the client's `useProjection('statusBarLiveTokenUsage')` re-renders the
+ * TPS segment while the stream is hot (the bar throttles the displayed figure
+ * to at most two refreshes per second). When the provider reports a `usage`
  * chunk mid-stream the estimate is replaced by the exact `outputTokens`, and
  * the rate is then provider-accurate.
  *
@@ -132,20 +140,20 @@ interface LiveRateState {
 declare module '@deepseek-ai/dsh-session-projection/types' {
     interface SessionProjectionMap {
         /** Real-time generation throughput (tok/s) of the current stream, folded by this plugin's host side. */
-        liveTokenUsage: LiveTokenUsageView;
+        statusBarLiveTokenUsage: LiveTokenUsageView;
     }
     interface SessionProjectionStateMap {
         /** Host fold state: stream counters, block slots and the carried rate. */
-        liveTokenUsage: LiveRateState;
+        statusBarLiveTokenUsage: LiveRateState;
     }
 }
 /**
- * The `liveTokenUsage` unit registered on `ctx.sessionProjections` (exported
- * for the unit spec). Only `assistant/chunk` and the stream-closing events
- * change the state reference, so the change feed stays quiet otherwise.
+ * The `statusBarLiveTokenUsage` unit registered on `ctx.sessionProjections`
+ * (exported for the unit spec). Only `assistant/chunk` and the stream-closing
+ * events change the state reference, so the change feed stays quiet otherwise.
  */
-export declare const liveTokenUsageProjectionDefinition: {
-    key: "liveTokenUsage";
+export declare const statusBarLiveTokenUsageProjectionDefinition: {
+    key: "statusBarLiveTokenUsage";
     stateSchema: z.ZodObject<{
         turn: z.ZodNullable<z.ZodNumber>;
         step: z.ZodNullable<z.ZodNumber>;
