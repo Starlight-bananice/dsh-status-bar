@@ -27,5 +27,10 @@ export function noteCurrentModel(model: string | undefined): void {
 
 /** Current model name for previews, or undefined before any session rendered. */
 export function useCurrentModel(): string | undefined {
-  return useSyncExternalStore(subscribe, () => current)
+  return useSyncExternalStore(subscribe, getCurrentModel, getCurrentModel)
+}
+
+/** Snapshot reader for the hook (client and hydration snapshot alike). */
+function getCurrentModel(): string | undefined {
+  return current
 }

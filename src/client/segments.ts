@@ -17,8 +17,22 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { modelConfigFor, type CostPrices, type StatusBarConfig, type SegmentId } from './config.ts'
 import { formatCost, formatDuration, formatTokens, formatTokensPerSecond } from './format.ts'
 import type { NS } from './locales.ts'
-import { hourInTimezone, inAnyPeakWindow } from './timezone.ts'
-import { costBreakdown, stepCost, stepModel, type SessionUsageClientState } from './session-usage-cost.ts'
+import type { HolidayCalendar, HolidayOverride } from './pricing-types.ts'
+import { currentCalendars } from './holidays.ts'
+import {
+  holidayIndex,
+  resolveBilling,
+  type BillingReason,
+  type DayFacts,
+  type HolidayIndex,
+} from './timezone.ts'
+import {
+  costBreakdown,
+  stepCost,
+  stepModel,
+  type PricingContext,
+  type SessionUsageClientState,
+} from './session-usage-cost.ts'
 
 export type StatusState = 'running' | 'idle' | 'error'
 
@@ -178,37 +192,55 @@ export function buildSegments(source: SegmentSource, config: StatusBarConfig, t:
  * straight from the user-maintained price book (each model has its own
  * prices and peak schedule). Returns null when the model has no entry —
  * the cost segment then hides instead of guessing.
+ *
  * When the model's peak/off-peak billing is on, the peak/off-peak input,
- * cache-hit, and output prices replace the flat rates, using the model's
- * timezone at `now` against ANY of its peak windows.
+ * cache-hit, and output prices replace the flat rates. Which tier applies is
+ * decided by {@link resolveBilling}: a working day inside one of the model's
+ * windows is peak, everything else — nights, weekends, holidays and 调休 rest
+ * days — is off-peak. `reason` says which of those it was, for the badges.
  */
 export function effectivePrices(
   model: ModelIdentity | null,
   cost: CostPrices,
   now: number,
-): { input: number; output: number; cacheRead: number; cacheWrite: number; source: 'flat' | 'peak' | 'offpeak' } | null {
+  dayRules = true,
+  calendars: readonly HolidayCalendar[] = [],
+  overrides: readonly HolidayOverride[] = [],
+  index?: HolidayIndex,
+): {
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite: number
+  source: 'flat' | 'peak' | 'offpeak'
+  reason: BillingReason | null
+  day: DayFacts
+} | null {
   const config = modelConfigFor(cost, model?.model)
   if (config === undefined) return null
-  let input = config.input
-  let output = config.output
-  let cacheRead = config.cacheRead
-  const cacheWrite = config.cacheWrite
-  let source: 'flat' | 'peak' | 'offpeak' = 'flat'
-  if (config.peakOffpeak) {
-    const hour = hourInTimezone(config.timezone, new Date(now))
-    if (inAnyPeakWindow(hour, config.peakWindows)) {
-      input = config.peakInput
-      output = config.peakOutput
-      cacheRead = config.peakCacheRead
-      source = 'peak'
-    } else {
-      input = config.offpeakInput
-      output = config.offpeakOutput
-      cacheRead = config.offpeakCacheRead
-      source = 'offpeak'
+  const lookup = index ?? holidayIndex(calendars, overrides)
+  const billing = resolveBilling(config, lookup, now, dayRules)
+  if (billing.tier === 'flat') {
+    return {
+      input: config.input,
+      output: config.output,
+      cacheRead: config.cacheRead,
+      cacheWrite: config.cacheWrite,
+      source: 'flat',
+      reason: null,
+      day: billing.day,
     }
   }
-  return { input, output, cacheRead, cacheWrite, source }
+  const peak = billing.tier === 'peak'
+  return {
+    input: peak ? config.peakInput : config.offpeakInput,
+    output: peak ? config.peakOutput : config.offpeakOutput,
+    cacheRead: peak ? config.peakCacheRead : config.offpeakCacheRead,
+    cacheWrite: config.cacheWrite,
+    source: peak ? 'peak' : 'offpeak',
+    reason: billing.reason,
+    day: billing.day,
+  }
 }
 
 /** Cost of one token-usage record at the given per-1M-token prices. */
@@ -251,6 +283,7 @@ export function usageHistory(
   state: SessionUsageClientState | undefined,
   cost: CostPrices,
   limit = 200,
+  context?: PricingContext,
 ): UsageHistoryRow[] {
   const rows: UsageHistoryRow[] = []
   for (let i = chat.nodes.length - 1; i >= 0 && rows.length < limit; i -= 1) {
@@ -269,7 +302,7 @@ export function usageHistory(
       cacheReadTokens: cacheRead,
       cacheWriteTokens: cacheWrite,
       outputTokens: output,
-    }, cost)
+    }, cost, context)
     rows.push({
       seq: node.seq,
       time: node.time,
@@ -389,7 +422,8 @@ function segmentView(
       // 以下为回退路径：客户端独立装配（无 host 投影）时保持原行为
       if (usage === undefined) return null
       const model = lastModel(chat, source.sessionModel)
-      const prices = effectivePrices(model, config.cost, now)
+      const prices = effectivePrices(model, config.cost, now, config.calendar.dayRules,
+        currentCalendars(), config.calendar.overrides)
       if (prices === null) return null
       if (prices.input <= 0 && prices.cacheRead <= 0 && prices.cacheWrite <= 0 && prices.output <= 0) return null
       const total = costOfUsage(usage, prices)

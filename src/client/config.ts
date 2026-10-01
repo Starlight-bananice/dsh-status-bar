@@ -8,8 +8,26 @@
 import { useSyncExternalStore } from 'react'
 import type { LocaleKeysOf } from '@deepseek-ai/dsh-client-ui-slots'
 import type { NS } from './locales.ts'
+import type {
+  DayType,
+  HolidayOverride,
+  ModelConfig,
+  PeakHourWindow,
+} from './pricing-types.ts'
+import { DAY_TYPES, DEFAULT_PRICING_TIMEZONE, normalizeHHMM } from './timezone.ts'
+
+export type {
+  DayType,
+  HolidayCalendar,
+  HolidayOverride,
+  ModelConfig,
+  OverrideKind,
+  PeakHourWindow,
+} from './pricing-types.ts'
 
 export const STORAGE_KEY = 'dsh.statusBar.v1'
+/** Current persisted schema version; v2 added the day-type pricing rules. */
+export const CONFIG_VERSION = 2
 
 /** Every segment the bar can render, in stable registry order. */
 export const SEGMENT_IDS = [
@@ -67,46 +85,31 @@ export const SEGMENT_META: Record<SegmentId, SegmentMeta> = {
 
 export type Currency = 'CNY' | 'USD'
 
-/** One peak window (may cross midnight); times are 'HH:MM' in the model's timezone. */
-export interface PeakWindow {
-  id: string
-  start: string
-  end: string
-}
-
+/** Fresh id for a peak window row (stable React key / edit target). */
 let peakWindowSeq = 0
-/** Fresh id for a peak window row. */
 export function nextPeakWindowId(): string {
   peakWindowSeq += 1
   return `pw-${Date.now().toString(36)}-${peakWindowSeq}`
 }
 
-/** Default peak windows for a newly added model (DeepSeek's official schedule). */
-export const DEFAULT_PEAK_WINDOWS: PeakWindow[] = [
-  { id: 'peak-1', start: '09:00', end: '12:00' },
-  { id: 'peak-2', start: '14:00', end: '18:00' },
+/**
+ * Default peak windows for a newly added model: DeepSeek's published schedule
+ * (09:00–12:00 and 14:00–18:00 Beijing time, working days only).
+ */
+export const DEFAULT_PEAK_WINDOWS: readonly PeakHourWindow[] = [
+  { id: 'peak-1', start: '09:00', end: '12:00', days: ['workday'] },
+  { id: 'peak-2', start: '14:00', end: '18:00', days: ['workday'] },
 ]
 
-/**
- * One model's price book entry: per-1M-token prices in the configured
- * currency, plus its OWN peak/off-peak schedule and rates.
- */
-export interface ModelConfig {
-  input: number
-  cacheRead: number
-  cacheWrite: number
-  output: number
-  peakOffpeak: boolean
-  /** IANA timezone (or 'local') this model's peak windows are evaluated in. */
-  timezone: string
-  peakWindows: PeakWindow[]
-  peakInput: number
-  peakCacheRead: number
-  peakOutput: number
-  offpeakInput: number
-  offpeakCacheRead: number
-  offpeakOutput: number
-}
+/** DeepSeek's published CNY rates per 1M tokens (flash, peak / off-peak). */
+export const DEEPSEEK_RATES = {
+  peakInput: 2,
+  peakCacheRead: 0.04,
+  peakOutput: 8,
+  offpeakInput: 1,
+  offpeakCacheRead: 0.02,
+  offpeakOutput: 4,
+} as const
 
 export interface CostPrices {
   currency: Currency
@@ -114,7 +117,22 @@ export interface CostPrices {
   models: Record<string, ModelConfig>
 }
 
+export interface CalendarConfig {
+  /**
+   * Apply the day-aware rules: weekends and statutory holidays / 调休 rest days
+   * are billed off-peak all day, and peak windows only run on working days.
+   * Off = plain clock-window pricing, exactly as before day types existed.
+   */
+  dayRules: boolean
+  /** Fetch the published holiday calendar from the plugin host route. */
+  autoFetch: boolean
+  /** Manual per-date overrides (holiday ↔ workday) the calendar cannot know. */
+  overrides: HolidayOverride[]
+}
+
 export interface StatusBarConfig {
+  /** Persisted schema version (see {@link CONFIG_VERSION}). */
+  version: number
   /** Master switch: false hides the bar entirely. */
   enabled: boolean
   /** Allow the bar to wrap onto multiple lines instead of eliding. */
@@ -122,9 +140,12 @@ export interface StatusBarConfig {
   /** Ordered list of enabled segments. */
   segments: SegmentId[]
   cost: CostPrices
+  /** Holiday-calendar behavior shared by every model. */
+  calendar: CalendarConfig
 }
 
 export const DEFAULT_CONFIG: StatusBarConfig = {
+  version: CONFIG_VERSION,
   enabled: true,
   wrap: true,
   segments: SEGMENT_IDS.filter(id => SEGMENT_META[id].defaultOn),
@@ -132,34 +153,75 @@ export const DEFAULT_CONFIG: StatusBarConfig = {
     currency: 'CNY',
     models: {},
   },
+  calendar: {
+    dayRules: true,
+    autoFetch: true,
+    overrides: [],
+  },
 }
 
 function defaultModelConfig(): ModelConfig {
   return {
     input: 2,
-    cacheRead: 0.5,
-    cacheWrite: 2,
+    cacheRead: 0.04,
+    cacheWrite: 0,
     output: 8,
-    peakOffpeak: false,
-    timezone: 'local',
-    peakWindows: DEFAULT_PEAK_WINDOWS.map(w => ({ ...w })),
-    peakInput: 3,
-    peakCacheRead: 0.1,
-    peakOutput: 9,
-    offpeakInput: 1.5,
-    offpeakCacheRead: 0.05,
-    offpeakOutput: 4.5,
+    peakOffpeak: true,
+    timezone: DEFAULT_PRICING_TIMEZONE,
+    peakWindows: DEFAULT_PEAK_WINDOWS.map(window => ({ ...window, days: [...window.days] })),
+    weekendOffpeak: true,
+    holidayOffpeak: true,
+    peakInput: DEEPSEEK_RATES.peakInput,
+    peakCacheRead: DEEPSEEK_RATES.peakCacheRead,
+    peakOutput: DEEPSEEK_RATES.peakOutput,
+    offpeakInput: DEEPSEEK_RATES.offpeakInput,
+    offpeakCacheRead: DEEPSEEK_RATES.offpeakCacheRead,
+    offpeakOutput: DEEPSEEK_RATES.offpeakOutput,
   }
 }
 
-/** Sanitize one model config (fills defaults for missing fields). */
-function normalizeModelConfig(raw: Partial<ModelConfig> | undefined): ModelConfig {
+/** Is this a day-type array we can trust? */
+function normalizeDays(raw: unknown): DayType[] {
+  if (!Array.isArray(raw)) return []
+  const days = DAY_TYPES.filter(day => (raw as unknown[]).includes(day))
+  return [...days]
+}
+
+/** Sanitize one model config (fills defaults for missing/invalid fields). */
+export function normalizeModelConfig(raw: Partial<ModelConfig> | undefined): ModelConfig {
   const base = defaultModelConfig()
   if (raw === undefined) return base
   const merged: ModelConfig = { ...base, ...raw }
-  if (!Array.isArray(merged.peakWindows) || merged.peakWindows.length === 0) {
-    merged.peakWindows = base.peakWindows
+  const windows: PeakHourWindow[] = []
+  if (Array.isArray(merged.peakWindows)) {
+    for (const window of merged.peakWindows) {
+      if (window === null || typeof window !== 'object') continue
+      const start = normalizeHHMM(String(window.start ?? ''))
+      const end = normalizeHHMM(String(window.end ?? ''))
+      if (start === null || end === null) continue
+      // A v1 window carried no day types: keep its old all-days behavior.
+      windows.push({
+        id: typeof window.id === 'string' && window.id !== '' ? window.id : nextPeakWindowId(),
+        start,
+        end,
+        days: window.days === undefined ? [...DAY_TYPES] : normalizeDays(window.days),
+      })
+    }
   }
+  merged.peakWindows = windows.length > 0 ? windows : base.peakWindows
+  if (typeof merged.timezone !== 'string' || merged.timezone === '') {
+    merged.timezone = base.timezone
+  }
+  for (const key of ['input', 'cacheRead', 'cacheWrite', 'output',
+    'peakInput', 'peakCacheRead', 'peakOutput',
+    'offpeakInput', 'offpeakCacheRead', 'offpeakOutput'] as const) {
+    if (typeof merged[key] !== 'number' || !Number.isFinite(merged[key])) {
+      merged[key] = base[key]
+    }
+  }
+  merged.peakOffpeak = merged.peakOffpeak === true
+  merged.weekendOffpeak = merged.weekendOffpeak !== false
+  merged.holidayOffpeak = merged.holidayOffpeak !== false
   return merged
 }
 
@@ -189,7 +251,7 @@ function migrateCost(raw: Partial<StatusBarConfig> | undefined): CostPrices {
         peakOffpeak: legacy.peakOffpeak === true,
         timezone: typeof legacy.timezone === 'string' ? legacy.timezone : 'local',
       }
-      if (Array.isArray(legacy.peakWindows)) patch.peakWindows = legacy.peakWindows as PeakWindow[]
+      if (Array.isArray(legacy.peakWindows)) patch.peakWindows = legacy.peakWindows as PeakHourWindow[]
       if (typeof legacy.peakInput === 'number') patch.peakInput = legacy.peakInput
       if (typeof legacy.peakCacheRead === 'number') patch.peakCacheRead = legacy.peakCacheRead
       if (typeof legacy.peakOutput === 'number') patch.peakOutput = legacy.peakOutput
@@ -208,7 +270,7 @@ function load(): StatusBarConfig {
   const raw = readStorage()
   if (raw === null) return DEFAULT_CONFIG
   try {
-    const parsed = JSON.parse(raw) as Partial<StatusBarConfig>
+    const parsed = JSON.parse(raw) as Partial<StatusBarConfig> & Record<string, unknown>
     const segments = Array.isArray(parsed.segments)
       ? parsed.segments.filter((id): id is SegmentId =>
         SEGMENT_IDS.includes(id as SegmentId))
@@ -217,11 +279,27 @@ function load(): StatusBarConfig {
       && 'models' in parsed.cost
       ? { currency: parsed.cost.currency === 'USD' ? 'USD' as const : 'CNY' as const, models: parsed.cost.models }
       : migrateCost(parsed)
+    const stored = parsed.calendar
+    const calendar: CalendarConfig = {
+      dayRules: stored?.dayRules !== false,
+      autoFetch: stored?.autoFetch !== false,
+      overrides: Array.isArray(stored?.overrides)
+        ? stored.overrides.filter(override =>
+          override !== null && typeof override === 'object'
+          && /^\d{4}-\d{2}-\d{2}$/.test(String(override.date)))
+        : [],
+    }
+    const models: Record<string, ModelConfig> = {}
+    for (const [model, modelConfig] of Object.entries(cost.models ?? {})) {
+      models[model] = normalizeModelConfig(modelConfig)
+    }
     return {
+      version: CONFIG_VERSION,
       enabled: parsed.enabled !== false,
       wrap: parsed.wrap === true,
       segments: segments.length > 0 ? segments : DEFAULT_CONFIG.segments,
-      cost,
+      cost: { currency: cost.currency, models },
+      calendar,
     }
   } catch {
     return DEFAULT_CONFIG
@@ -283,8 +361,12 @@ export function moveSegment(id: SegmentId, delta: -1 | 1): void {
   persist({ ...config, segments })
 }
 
+/** Reset the bar/price book to defaults but keep manual holiday overrides. */
 export function resetConfig(): void {
-  persist({ ...DEFAULT_CONFIG })
+  persist({
+    ...DEFAULT_CONFIG,
+    calendar: { ...DEFAULT_CONFIG.calendar, overrides: config.calendar.overrides },
+  })
 }
 
 /** The price-book entry for one model, or undefined when unconfigured. */
@@ -315,7 +397,47 @@ export function removeModelConfig(model: string): void {
   persist({ ...config, cost: { ...config.cost, models } })
 }
 
+/** Apply a partial update to the shared holiday-calendar settings. */
+export function updateCalendar(patch: Partial<CalendarConfig>): void {
+  persist({ ...config, calendar: { ...config.calendar, ...patch } })
+}
+
+/** Add or replace the manual override for one date. */
+export function setHolidayOverride(date: string, kind: HolidayOverride['kind'], label = ''): void {
+  const dateKey = date.trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return
+  const overrides = config.calendar.overrides.filter(override => override.date !== dateKey)
+  if (kind !== 'auto') overrides.push({ date: dateKey, kind, label: label.trim() })
+  overrides.sort((a, b) => a.date.localeCompare(b.date))
+  updateCalendar({ overrides })
+}
+
+/** Drop the manual override for one date (back to the published calendar). */
+export function removeHolidayOverride(date: string): void {
+  updateCalendar({ overrides: config.calendar.overrides.filter(override => override.date !== date) })
+}
+
+/** Reset one model's schedule to DeepSeek's published peak/off-peak rules. */
+export function applyDeepSeekPreset(model: string): void {
+  setModelConfig(model, {
+    peakOffpeak: true,
+    timezone: DEFAULT_PRICING_TIMEZONE,
+    peakWindows: DEFAULT_PEAK_WINDOWS.map(window => ({ ...window, days: [...window.days] })),
+    weekendOffpeak: true,
+    holidayOffpeak: true,
+    peakInput: DEEPSEEK_RATES.peakInput,
+    peakCacheRead: DEEPSEEK_RATES.peakCacheRead,
+    peakOutput: DEEPSEEK_RATES.peakOutput,
+    offpeakInput: DEEPSEEK_RATES.offpeakInput,
+    offpeakCacheRead: DEEPSEEK_RATES.offpeakCacheRead,
+    offpeakOutput: DEEPSEEK_RATES.offpeakOutput,
+  })
+  updateCalendar({ dayRules: true })
+}
+
 /** Reactive read for React components (bar, usage dialog, settings page). */
 export function useStatusBarConfig(): StatusBarConfig {
-  return useSyncExternalStore(subscribeConfig, getConfig)
+  // Third argument = the server/hydration snapshot; without it React warns
+  // and re-renders from scratch when the page is hydrated.
+  return useSyncExternalStore(subscribeConfig, getConfig, getConfig)
 }

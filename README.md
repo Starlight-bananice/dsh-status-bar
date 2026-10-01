@@ -22,14 +22,16 @@
 - **Near-native experience, fully yours** — 16 toggleable, reorderable segments: status dot, model, title, workspace, turns & steps, model/tool time, TTFT & decode speed, cache-hit rate, tokens, context pressure, live TPS, session time, cost estimate, jobs, queue, errors
 - **Live throughput (TPS)** — the bar folds this session's own live stream in the browser, so the speed updates chunk by chunk while streaming and tracks the real generation rate regardless of how finely the stream is delivered; no polling, no host round-trip, no external live-stats plugin
 - **Cost estimation with a user-maintained model price book** — per-model rates, per-model peak/off-peak schedules, **each message/step priced with the model that actually produced it** (input, cache-hit, cache-write and output priced separately at that step's own time), and a «Usage & cost» dialog with a stacked cost-trend chart (day / week / month), a paged per-step usage history (with a dedicated cache-hit column), and a total-cost hero
+- **Keeps up with DeepSeek's shifting peak/off-peak rules** — no more one hard-coded list of `HH:MM` windows: billing keys off **working day vs weekend vs public holiday**, with the holiday / 调休 calendar fetched and cached locally (and editable by hand). When DeepSeek moves the windows, changes the weekend rule, or adds holidays and make-up workdays, you refresh once or edit one field instead of rebuilding the price book
 - **Zero-config default** — 13 segments ship enabled; everything else is a checkbox away
 - **Useful options** — multi-line wrapping (so nothing gets truncated), per-model cost estimation with peak/off-peak pricing, currency choice (CNY / USD), a quick-toggle gear menu, and a dedicated settings page with one-click reset
+- **24-hour clock fields** — peak windows are typed as `09:00`, not whatever AM/PM format the browser locale would impose on a native time input
 - **Clean takeover** — the plugin's bar shadows the built-in `stats` cell at lower priority: while loaded it renders, when unloaded the built-in line returns untouched
 - **Bilingual UI** — client locale strings ship for English and Chinese, following the DSH locale system
 
 ## Screenshots
 
-The status bar replaces the built-in stats line with near-native live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page — including a per-model price book with peak/off-peak pricing:
+The status bar replaces the built-in stats line with near-native live session telemetry (status · model · turns · context · cache · TPS · session time · jobs · queue · errors), managed from a dedicated settings page — including a per-model price book and the holiday calendar behind peak/off-peak pricing:
 
 ![Status bar live view](assets/screenshot-status-bar-en.png)
 
@@ -79,13 +81,13 @@ Installing from inside the app writes to the same profile a terminal command wou
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # or pin the exact version
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
 ```
 
 ### Self-hosted Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.2
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.0
 ```
 
 ### Other sources
@@ -99,7 +101,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # A pinned release tarball — immutable and versioned (attached to every
 # GitHub release; handy when git access to the repo is awkward)
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.2/bananiceee-dsh-status-bar-0.2.2.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.0/bananiceee-dsh-status-bar-0.3.0.tgz
 ```
 
 > **Note:** pnpm 11 enforces a 24 h `minimumReleaseAge` for freshly published packages — if a same-day release is rejected, append `--config.minimumReleaseAge=0` to the `dsh plugin add` command.
@@ -116,13 +118,13 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # or re-add a pinned version (the in-app page currently has no auto-update:
 # uninstall, then install the new version)
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
 
 # github: installs — pnpm pins a ref-less `github:` dependency to the commit
 # resolved at install time, so `dsh plugin update github:...` reports
 # "Already up to date" and keeps the old build. Upgrade with a re-add:
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.2.2
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.0
 ```
 
 ### Disable
@@ -147,8 +149,9 @@ Removal restores the built-in stats line automatically (the shadow cell is relea
 
    ```sh
    # In Settings → Status Bar → Model price book:
-   # model "deepseek-chat" → input 2 / cache read 0.5 / cache write 2 / output 8 (CNY per 1M tokens)
-   # optional: enable peak/off-peak with DeepSeek's official windows 09:00–12:00, 14:00–18:00
+   # model "deepseek-flash" → peak input 2 / cache hit 0.04 / output 8 (CNY per 1M tokens)
+   # then hit "Apply DeepSeek official rules": peak = 09:00–12:00 and 14:00–18:00 Beijing time on
+   # Mon–Fri; everything else (weekends, holidays, 调休 rest days in full) is off-peak at half price
    ```
 
    The bar then shows e.g. `≈¥0.0123` for the current session; the figure is the sum of each model's usage × that model's own price (so switching models mid-session prices each part with its own rate). Click the chart button next to the gear to open the usage & cost dialog (stat cards, rate card, a paged usage history — 20 rows per page, up to 10 pages — with input / cache-hit / output / cost columns, and a per-model cost-trend chart with ‹ › period navigation).
@@ -164,10 +167,15 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | `segments` | 13 on / 3 off (see below) | Ordered list of enabled segments |
 | `cost.currency` | `CNY` | Currency for cost display (`CNY` / `USD`) |
 | `cost.models` | `{}` | User-maintained model price book (model id → prices + schedule) |
+| `calendar.dayRules` | `true` | Split peak/off-peak by working day vs weekend/holiday; off = clock windows only (the old behavior) |
+| `calendar.autoFetch` | `true` | Fetch and cache the holiday calendar through the plugin host route |
+| `calendar.overrides` | `[]` | Manual exception dates (`{date, kind: off/work/auto, label}`); they win over the published calendar |
 
 **Default segment state:** on — status, model, counts, durations, speeds, cache hit, tokens, context, TPS, session time, jobs, queue, errors; off — title, workspace, cost.
 
-**Model price book entry** (values added when a model is configured): input `2`, cache read `0.5`, cache write `2`, output `8` (per 1M tokens, in the configured currency); peak/off-peak disabled by default; when enabled, defaults to DeepSeek's official windows `09:00–12:00`, `14:00–18:00`, timezone `local`.
+**Model price book entry** (defaults filled in when a model is added — DeepSeek's current published rates per 1M tokens): peak input `2` / cache hit `0.04` / output `8`, off-peak input `1` / cache hit `0.02` / output `4`, cache write `0`; peak/off-peak is on by default with timezone `Asia/Shanghai` (DeepSeek writes its schedule in Beijing time), peak windows `09:00–12:00` and `14:00–18:00` on working days, and weekends plus public holidays / 调休 rest days off-peak all day. Existing entries are never overwritten, but a v1 config is upgraded field by field: its windows keep their old all-days behavior and the weekend/holiday switches default to on — turn `Split peak/off-peak by working day vs holiday` off to keep the literal old behavior.
+
+**Holiday calendar**: DeepSeek decides working days from Chinese statutory holidays and the State Council's 调休 (make-up workday) schedule, which is re-announced every year — so nothing is hard-coded. "Refresh calendar" asks the plugin's own host route `/status-bar/api/holidays`, which fetches the published dataset (holiday-cn, transcribed from the State Council notices) and caches it at `<DSH_HOME>/dsh-status-bar/holidays.json`. When the calendar (or a single year) is unavailable the pricing falls back to the weekday rule, the settings page says why, and you can add exception dates by hand.
 
 **Environment variables:** `DSH_HOME` (host-side) — base directory for the plugin's local data (default `~/.dsh`). No other env vars, no secrets, no tokens.
 
@@ -187,7 +195,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Context | context-window occupancy % | `contextPressure` |
 | Throughput TPS | live generation rate (default on) | client fold of the session event window (`assistant/live-chunk`); block-aware token estimation (~4 chars/token + block/role framing, re-priced at `block-end`), measured over a trailing 1.5 s window so the figure is independent of stream granularity; switches to the provider-reported rate once exact usage lands, and reports 0 while the session is not generating |
 | Session time | wall clock, ticks while running | chat `turnTimings` |
-| Cost estimate | ≈¥0.0123 (off by default) | `sessionUsage` projection — each model's usage × its own effective price (flat or peak/off-peak at `now`), summed across models |
+| Cost estimate | ≈¥0.0123 (off by default) | `sessionUsage` projection — each model's usage × its own effective price, with the tier decided by the working-day/weekend/holiday rule at that step's own time, summed across models |
 | Jobs | running background jobs | `ctx.jobs` roster (same source as the desktop's session-header job list) |
 | Queue | queued messages | composer inbox (`useInput` → `queue`) |
 | Errors | failed/retried/over-limit count (>0 only) | chat node fold |
@@ -197,9 +205,9 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | Category | What the plugin touches |
 |---|---|
 | Files | Host writes the usage ledger to `<DSH_HOME>/dsh-status-bar/usage.jsonl` (`~/.dsh/dsh-status-bar/usage.jsonl` by default; one record per assistant message: timestamp, model, input/cacheRead/cacheWrite/output tokens). In-memory history is a rolling 120-day window. |
-| Network | **No outbound requests, ever.** The only endpoint is the plugin's own local webserver route `/status-bar/api/usage` (same origin as the DSH web UI, `127.0.0.1`), serving the chart buckets. |
+| Network | The client only calls the plugin's own local webserver routes (same origin as the DSH web UI, `127.0.0.1`): `/status-bar/api/usage` for chart buckets and `/status-bar/api/holidays` for the holiday calendar. Only when you hit "Refresh calendar" (or the 12-hour cache goes stale) does the host issue one GET to the public dataset host `cdn.jsdelivr.net` (holiday-cn) to update it — turn "Fetch and cache the holiday calendar automatically" off for zero outbound traffic. |
 | Credentials | **None.** The plugin never reads, stores, or transmits API keys, tokens, or cookies. |
-| User data | Client: `localStorage["dsh.statusBar.v1"]` (bar config + price book — no conversation content). Host: the usage ledger described above (token counts only, no prompts, no messages, no file contents). |
+| User data | Client: `localStorage["dsh.statusBar.v1"]` (bar config + price book + holiday exceptions) and `localStorage["dsh.statusBar.holidays.v1"]` (calendar cache) — no conversation content. Host: the usage ledger above (token counts only) plus the `holidays.json` calendar cache; no prompts, messages, or file contents. |
 
 ## Troubleshooting
 
@@ -210,6 +218,8 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | TPS segment is 0 / blank | No stream has started yet in this session, or the stream has settled (no active generation reads as 0 by design). The measurement window restarts on each retry. |
 | TPS conflicts with another plugin | None by design — this plugin registers **no** shared projection key. The live rate is folded client-side from this session's own event window, so another status/TPS plugin cannot displace or shadow it. |
 | Cost estimate missing | None of the session's models is in the price book (or they are all zero-priced) → add them in Settings → Status Bar → Model price book. Costs are estimated at the book's rates (per model, flat or peak/off-peak), not provider billing. |
+| Cost reads too high / too low | Check the tier badge on the model (peak / off-peak and its reason): "outside peak windows" when it should be peak usually means a window typed in 12-hour form (this plugin parses 24-hour `09:00`); a weekend/holiday judged wrong means the calendar is stale — hit "Refresh calendar" or add an exception date. |
+| Holiday calendar fetch fails | The settings page shows the reason and pricing falls back to the weekday rule (weekends still off-peak, 调休 workdays billed off-peak). Retry later, add exception dates by hand, or turn automatic fetching off. |
 | Usage chart is empty | No assistant messages with provider-reported usage in the period yet, or `DSH_HOME` points elsewhere than expected (check the `usage.jsonl` location above). |
 | UI looks broken after an upgrade | Hard-refresh the window (stale client bundle) and verify the plugin version on the in-app **Plugins** page. |
 | Can't tell which version is installed | From a terminal (macOS/Linux): `node -p "require(process.env.HOME + '/.dsh/profiles/desktop/node_modules/@bananiceee/dsh-status-bar/package.json').version"` — use `web` instead of `desktop` for a self-hosted web profile. |

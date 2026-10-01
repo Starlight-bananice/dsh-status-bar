@@ -15,7 +15,9 @@ import { modelConfigFor, setModelConfig, useStatusBarConfig, type ModelConfig } 
 import { effectivePrices, usageHistory, type UsageHistoryRow } from './segments.ts'
 import { costBreakdown } from './session-usage-cost.ts'
 import { formatCost, formatTokens } from './format.ts'
-import { hourInTimezone, inAnyPeakWindow, peakWindowsLabel } from './timezone.ts'
+import { resolveBilling, type HolidayIndex } from './timezone.ts'
+import { currentCalendars, useHolidayAutoFetch, useHolidayView } from './holidays.ts'
+import { StatusPill } from './StatusPill.tsx'
 import { NS } from './locales.ts'
 import './projections.ts'
 import { ChartCard } from './ChartCard.tsx'
@@ -108,23 +110,14 @@ function HistoryTable({ rows, currency, t }: {
   )
 }
 
-function PeakBadge({ config, now, t }: {
+function PeakBadge({ config, index, now, t }: {
   config: ModelConfig
+  index: HolidayIndex
   now: number
   t: UsageDialogEntryProps['t']
 }) {
-  const hour = hourInTimezone(config.timezone, new Date(now))
-  const inPeak = inAnyPeakWindow(hour, config.peakWindows)
-  const zone = config.timezone === 'local' ? t('section.zoneLocal') : config.timezone
-  return (
-    <span className={inPeak ? 'dsb-usage-peak on' : 'dsb-usage-peak'}>
-      {inPeak ? t('section.peak') : t('section.offpeak')}
-      {' '}
-      {peakWindowsLabel(config.peakWindows)}
-      {' · '}
-      {zone}
-    </span>
-  )
+  const state = resolveBilling(config, index, now)
+  return <StatusPill config={config} state={state} index={index} now={now} t={t} />
 }
 
 export const UsageDialogEntry = memo(function UsageDialogEntry(props: UsageDialogEntryProps) {
@@ -147,8 +140,15 @@ export const UsageDialogEntry = memo(function UsageDialogEntry(props: UsageDialo
   const summary: SessionSummary | undefined = useSessions(state => state.byId[sessionId])
 
   const modelConfig = modelConfigFor(config.cost, sessionModel?.model)
-  const prices = effectivePrices(sessionModel ?? null, config.cost, now)
-  const rows = usageHistory(session, sessionUsage, config.cost, HISTORY_MAX_ROWS)
+  const { index } = useHolidayView(config.calendar.overrides)
+  useHolidayAutoFetch(config.calendar.autoFetch)
+  const pricing = {
+    dayRules: config.calendar.dayRules,
+    overrides: config.calendar.overrides,
+  }
+  const prices = effectivePrices(sessionModel ?? null, config.cost, now, pricing.dayRules,
+    currentCalendars(), pricing.overrides, index)
+  const rows = usageHistory(session, sessionUsage, config.cost, HISTORY_MAX_ROWS, pricing)
 
   const billedInput = usage === undefined
     ? 0
@@ -216,7 +216,7 @@ export const UsageDialogEntry = memo(function UsageDialogEntry(props: UsageDialo
                   <span className="dsb-usage-cost-num">{formatCost(totalCost, config.cost.currency)}</span>
                   <div className="dsb-usage-hero-sub">
                     {modelConfig !== null && modelConfig !== undefined && modelConfig.peakOffpeak && prices !== null && prices.source !== 'flat' && (
-                      <PeakBadge config={modelConfig} now={now} t={t} />
+                      <PeakBadge config={modelConfig} index={index} now={now} t={t} />
                     )}
                     {sessionModel !== undefined && (
                       <span className="dsb-usage-model-chip">{sessionModel.model}</span>

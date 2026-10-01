@@ -281,6 +281,87 @@ const STYLES = `
   opacity: 0.35;
   cursor: default;
 }
+/* Peak-window row: 24-hour clock fields + the day types the window covers. */
+.dsb-set-window .dsb-time-input {
+  width: 88px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.dsb-set-daytypes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 6px;
+}
+.dsb-set-daytype {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #5b6472);
+  white-space: nowrap;
+}
+/* Shared holiday calendar: status row, 7-day strip, manual exceptions. */
+.dsb-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 14px;
+}
+.dsb-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.dsb-cal-status {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #5b6472);
+}
+.dsb-cal-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0 10px;
+}
+.dsb-cal-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 62px;
+  padding: 5px 8px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, #ffffff);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.dsb-cal-chip-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary, #1a1d24);
+}
+.dsb-cal-chip-week {
+  color: var(--dsw-alias-label-secondary, #5b6472);
+}
+.dsb-cal-chip-kind {
+  font-weight: 600;
+}
+.dsb-cal-chip-kind.off {
+  color: #2e9e5b;
+}
+.dsb-cal-chip-kind.work {
+  color: var(--dsw-alias-brand-primary, #4176e6);
+}
+.dsb-cal-chip-name {
+  color: var(--dsw-alias-label-secondary, #5b6472);
+}
+.dsb-cal-override-date {
+  font-variant-numeric: tabular-nums;
+  min-width: 92px;
+  color: var(--dsw-alias-label-primary, #1a1d24);
+}
+.dsb-usage-peak-zone {
+  opacity: 0.75;
+}
 .dsb-set-msg.ok {
   background: color-mix(in srgb, #2ecc71 12%, transparent);
   color: var(--dsw-alias-label-primary, #1a1d24);

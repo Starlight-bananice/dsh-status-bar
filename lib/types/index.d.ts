@@ -14,6 +14,9 @@
  *     file in the plugin's local data directory (~/.dsh/dsh-status-bar),
  *     and serves per-period per-model buckets to the usage dialog chart via
  *     `/status-bar/api/usage`.
+ *  4. the Chinese holiday / 调休 calendar (`/status-bar/api/holidays`) the
+ *     client's peak/off-peak pricing needs — the dates are re-announced every
+ *     year, so the host fetches the published dataset and caches it on disk.
  *
  * All pricing stays client-side (the user-maintained model price book).
  * @module @bananiceee/dsh-status-bar
@@ -21,5 +24,5 @@
 import type { Context } from '@deepseek-ai/cordis';
 export declare const name = "@bananiceee/dsh-status-bar";
 export declare const inject: string[];
-/** Register the model projection, the live rate projection, the usage ledger, and the chart API. */
+/** Register the projections, the live rate projection, the usage ledger, and the plugin APIs. */
 export declare function apply(ctx: Context): void;

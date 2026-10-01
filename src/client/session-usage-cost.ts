@@ -4,16 +4,42 @@
  * The cost segment, usage dialog total, and history rows all price per step
  * with the model that ACTUALLY produced that step's tokens (from the host
  * `sessionUsage` fold), applying that model's own price-book entry AND its
- * peak/off-peak schedule at the step's wall-clock time — instead of the old
- * whole-session-tokens × last-model-price approximation.
+ * peak/off-peak schedule at the step's own wall-clock time — instead of the
+ * old whole-session-tokens × last-model-price approximation.
  */
 
-import type { CostPrices } from './config.ts'
+import { getConfig, type CostPrices, type HolidayOverride } from './config.ts'
+import { currentCalendars } from './holidays.ts'
 import {
   costOfUsage,
   effectivePrices,
   type ModelIdentity,
 } from './segments.ts'
+import { holidayIndex, type HolidayIndex } from './timezone.ts'
+
+/**
+ * Day-rule context every price lookup needs: whether the day-aware rules are
+ * on and the user's manual calendar overrides. Published calendars are read
+ * from the browser store at call time, so callers only pass the persisted half.
+ */
+export interface PricingContext {
+  dayRules: boolean
+  overrides: readonly HolidayOverride[]
+  /** Pre-built lookup (history rows price hundreds of steps per render). */
+  index?: HolidayIndex
+}
+
+/** Resolve the context, filling in whatever the caller did not supply. */
+function pricingContext(context?: PricingContext): Required<PricingContext> {
+  const config = getConfig()
+  const dayRules = context?.dayRules ?? config.calendar.dayRules
+  const overrides = context?.overrides ?? config.calendar.overrides
+  return {
+    dayRules,
+    overrides,
+    index: context?.index ?? holidayIndex(currentCalendars(), overrides),
+  }
+}
 
 /** Shape of the host `sessionUsage` projection's view (declared independently so this module stays host-free). */
 export interface SessionUsageClientState {
@@ -47,24 +73,26 @@ export function costBreakdown(
   state: SessionUsageClientState | undefined,
   cost: CostPrices,
   now: number,
+  context?: PricingContext,
 ): CostBreakdown | null {
   if (state === undefined) return null
+  const rules = pricingContext(context)
   const perModel = new Map<string, number>()
   const pricedModels: string[] = []
   let total = 0
   for (const [model, usage] of Object.entries(state.models)) {
     const identity: ModelIdentity = { provider: 'unknown', model }
-    const prices = effectivePrices(identity, cost, now)
+    const prices = effectivePrices(identity, cost, now, rules.dayRules, [], rules.overrides, rules.index)
     if (prices === null) continue
     if (prices.input <= 0 && prices.cacheRead <= 0 && prices.cacheWrite <= 0 && prices.output <= 0) continue
-    const stepCost = costOfUsage({
+    const priced = costOfUsage({
       uncachedInputTokens: usage.input,
       cacheReadTokens: usage.cacheRead,
       cacheWriteTokens: usage.cacheWrite,
       outputTokens: usage.output,
     }, prices)
-    perModel.set(model, stepCost)
-    total += stepCost
+    perModel.set(model, priced)
+    total += priced
     pricedModels.push(model)
   }
   if (pricedModels.length === 0) return null
@@ -86,7 +114,7 @@ export function stepModel(
 /**
  * Cost of ONE step's token usage, priced with the model that produced it and
  * that model's price-book entry at the step's own wall-clock time (peak/off-peak
- * applied to `now`, or the fold's recorded time when present). Returns null
+ * applied to the fold's recorded time, falling back to `now`). Returns null
  * when the step's model is unknown or unconfigured.
  */
 export function stepCost(
@@ -100,11 +128,13 @@ export function stepCost(
     outputTokens: number
   },
   cost: CostPrices,
+  context?: PricingContext,
 ): number | null {
   const model = stepModel(state, seq, provenance)
   if (model === null) return null
   const at = state?.bySeq[String(seq)]?.time ?? Date.now()
-  const prices = effectivePrices(model, cost, at)
+  const rules = pricingContext(context)
+  const prices = effectivePrices(model, cost, at, rules.dayRules, [], rules.overrides, rules.index)
   if (prices === null) return null
   if (prices.input <= 0 && prices.cacheRead <= 0 && prices.cacheWrite <= 0 && prices.output <= 0) return null
   return costOfUsage({

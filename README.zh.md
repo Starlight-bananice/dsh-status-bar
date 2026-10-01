@@ -22,14 +22,16 @@
 - **接近原生体验，且完全由你掌控** —— 16 个可开关、可排序的信息段：状态点、模型、标题、工作区、轮次与步数、模型/工具耗时、TTFT 与解码速度、缓存命中率、Token、上下文占用、实时 TPS、会话时长、费用估算、任务、队列、错误
 - **实时吞吐（TPS）** —— 底栏在浏览器内直接折叠本会话自己的实时流，流式生成期间速度随分块逐块刷新，无论流以多细的粒度送达都能反映真实生成速率；无需轮询、无需 host 往返，也无需外部 live-stats 插件
 - **费用估算 + 用户维护的模型价格手册** —— 每个模型独立的价格与峰/谷时段，**每条消息/每一步都按实际产出它的模型计价**（输入、缓存命中、缓存写入、输出四类分别按该步发生时刻取价）；「用量与费用」弹窗内置堆叠费用趋势图（日 / 周 / 月）、分页的逐步用量历史（含独立的缓存命中列）与总成本展示
+- **跟得上 DeepSeek 反复调整的峰谷规则** —— 不再是把时段写死成一组 `HH:MM`：改为「工作日 / 周末 / 法定节假日」三类日判定，节假日与调休日历一键拉取并缓存在本地、可手动增删例外日期；DeepSeek 之后无论是改时段、改周末规则、还是新增节假日与调休安排，你只需刷新一次日历或改一个时段，不必重配整个价格表
 - **零配置开箱即用** —— 13 个信息段默认开启，其余勾选即得
 - **多项实用选项** —— 多行换行显示（内容再多也不会被截断省略）、逐模型费用估算（支持峰谷计价）、币种切换（CNY / USD）、齿轮快捷开关菜单，以及带一键重置的专属设置页
+- **24 小时制时段输入** —— 峰谷时段用 24 小时制文本框（`09:00`），不再受浏览器区域设置影响显示成 AM/PM
 - **干净的接管机制** —— 插件底栏以低优先级遮蔽内置 `stats` 单元格：加载期间由其渲染，卸载后内置统计行原样恢复
 - **双语界面** —— 客户端文案内置英文与中文，遵循 DSH locale 体系
 
 ## Screenshots（界面预览）
 
-以接近原生的底栏替换内置统计行，实时呈现会话状态（状态 · 模型 · 轮次 · 上下文 · 缓存 · TPS · 会话时长 · 任务 · 队列 · 错误），并由专属设置页统一管理——含逐模型价格手册（支持峰谷计价）：
+以接近原生的底栏替换内置统计行，实时呈现会话状态（状态 · 模型 · 轮次 · 上下文 · 缓存 · TPS · 会话时长 · 任务 · 队列 · 错误），并由专属设置页统一管理——含逐模型价格手册与节假日日历（支持峰谷计价）：
 
 ![状态栏实时显示](assets/screenshot-status-bar-zh.png)
 
@@ -79,13 +81,13 @@ DSH 0.2.0 移除了 `@deepseek-ai/dsh-client-runtime`，并把旧 Conversation �
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # 或钉住确切版本
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
 ```
 
 ### 自建 Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.2
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.0
 ```
 
 ### 其他来源
@@ -99,7 +101,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # 或安装固定版本的 release tgz —— 不可变且带版本号（随每个 GitHub
 # release 附带；适合不便直连 git 仓库的场景）
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.2/bananiceee-dsh-status-bar-0.2.2.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.0/bananiceee-dsh-status-bar-0.3.0.tgz
 ```
 
 > **提示：** pnpm 11 对刚发布的包强制 24 小时 `minimumReleaseAge`——若某个当天发布的版本被拒绝，在 `dsh plugin add` 命令后追加 `--config.minimumReleaseAge=0`。
@@ -116,13 +118,13 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # 或重新 add 钉住的版本（应用内页面暂不支持自动更新：
 # 请先卸载，再安装新版本）
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
 
 # github: 安装——pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到
 # 的 commit，`dsh plugin update github:...` 只会提示 "Already up to date"
 # 并保留旧构建。升级请用重新 add：
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.2.2
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.0
 ```
 
 ### 禁用
@@ -147,8 +149,9 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 
    ```sh
    # 在 设置 → 状态栏 → 模型价格手册 中：
-   # 模型 "deepseek-chat" → 输入 2 / 缓存读 0.5 / 缓存写 2 / 输出 8（每 1M tokens，CNY）
-   # 可选：启用峰谷计价，默认采用 DeepSeek 官方时段 09:00–12:00、14:00–18:00
+   # 模型 "deepseek-flash" → 输入 2 / 缓存命中 0.04 / 缓存写入 0 / 输出 8（每 1M tokens，CNY）
+   # 一键「套用 DeepSeek 官方规则」：北京时间工作日 09:00–12:00、14:00–18:00 为峰时，
+   # 其余时段（含周末、法定节假日、调休休息日全天）为谷时，谷时价为峰时价的一半
    ```
 
    底栏随即显示如 `≈¥0.0123` 的当前会话费用；该数字是各模型用量 × 该模型自身价格之和（会话中途切换模型时，每一部分都按各自的费率计价）。点击齿轮旁的图表按钮可打开「用量与费用」弹窗（统计卡、费率卡、分页的用量历史——每页 20 条、最多 10 页——含输入 / 缓存命中 / 输出 / 费用列，以及带 ‹ › 周期翻页的逐模型费用趋势图）。
@@ -164,10 +167,15 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 | `segments` | 13 开 / 3 关（见下） | 已启用的信息段有序列表 |
 | `cost.currency` | `CNY` | 费用显示币种（`CNY` / `USD`） |
 | `cost.models` | `{}` | 用户维护的模型价格手册（模型 id → 价格 + 时段） |
+| `calendar.dayRules` | `true` | 按工作日/节假日区分峰谷；关闭后仅按时钟时段判断（旧版行为） |
+| `calendar.autoFetch` | `true` | 自动向 host 路由拉取并缓存节假日日历 |
+| `calendar.overrides` | `[]` | 手动例外日期（`{date, kind: off/work/auto, label}`），优先级高于已发布的日历 |
 
 **默认信息段状态：** 开启——状态、模型、轮次、耗时、速度、缓存命中、Token、上下文、TPS、会话时长、任务、队列、错误；关闭——标题、工作区、费用。
 
-**模型价格手册条目**（为模型配置时填入的数值）：输入 `2`、缓存读 `0.5`、缓存写 `2`、输出 `8`（每 1M tokens，按配置的币种）；默认不启用峰谷；启用时默认使用 DeepSeek 官方时段 `09:00–12:00`、`14:00–18:00`，时区 `local`。
+**模型价格手册条目**（新增模型时填入的默认值，即 DeepSeek 官方现价，每 1M tokens）：峰时输入 `2` / 缓存命中 `0.04` / 输出 `8`，谷时输入 `1` / 缓存命中 `0.02` / 输出 `4`，缓存写入 `0`；峰谷计价默认开启，时区默认 `Asia/Shanghai`（DeepSeek 的规则以北京时间为准），峰时时段为工作日 `09:00–12:00`、`14:00–18:00`，周末与法定节假日/调休休息日全天按谷时。已有配置不会被覆盖，但旧版（v1）配置会被补齐为新字段：原时段保留原有「所有日期都生效」的行为，周末与节假日全天谷时开关默认打开——如需完全保持旧行为，把「按工作日/节假日区分峰谷」关掉即可。
+
+**节假日日历**：DeepSeek 按中国法定节假日与国务院调休安排判定工作日，这些日期每年重新公布，因此插件不写死日期。点击「刷新日历」会请求插件自身的 host 路由 `/status-bar/api/holidays`，由 host 拉取公开数据源（holiday-cn，转录自国务院通知）并缓存到 `<DSH_HOME>/dsh-status-bar/holidays.json`；日历或某一年不可用时自动回退为「仅按星期判断」，设置页会显示原因，也可在下方手动添加例外日期。
 
 **环境变量：** `DSH_HOME`（host 侧）——插件本地数据的基准目录（默认 `~/.dsh`）。无其他环境变量，无密钥，无 Token。
 
@@ -187,7 +195,7 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 | 上下文 | 上下文窗口占用 % | `contextPressure` |
 | 实时 TPS | 当前生成速率（默认开启） | 客户端折叠会话事件窗口（`assistant/live-chunk`）；分块感知的 token 估算（约 4 字符/token + 块/角色框架开销，`block-end` 时按整块重新计价），在 1.5 秒滑动窗口内测速，因此该数值不受流的送达粒度影响；provider 上报的精确用量到达后切换为上报速率，会话未在生成时显示 0 |
 | 会话时长 | 挂钟时间，运行时走动 | chat `turnTimings` |
-| 费用估算 | ≈¥0.0123（默认关闭） | `sessionUsage` 投影——每个模型的用量 × 其自身生效价格（平峰，或按 `now` 取峰谷），跨模型求和 |
+| 费用估算 | ≈¥0.0123（默认关闭） | `sessionUsage` 投影——每个模型的用量 × 其自身生效价格；峰谷由「工作日/周末/节假日 + 时段」规则在该步发生时刻判定，跨模型求和 |
 | 后台任务 | 运行中的后台任务 | `ctx.jobs` 花名册（与桌面版自身的会话头部任务列表同源） |
 | 队列 | 排队中的消息 | 输入框收件箱（`useInput` → `queue`） |
 | 错误 | 失败/重试/超限计数（仅 >0 时显示） | chat node 折叠 |
@@ -197,9 +205,9 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 | 类别 | 插件会触及什么 |
 |---|---|
 | 文件 | host 侧把用量账本写入 `<DSH_HOME>/dsh-status-bar/usage.jsonl`（默认 `~/.dsh/dsh-status-bar/usage.jsonl`；每条 assistant 消息一条记录：时间戳、模型、input/cacheRead/cacheWrite/output token 数）。内存中的历史为 120 天滚动窗口。 |
-| 网络 | **绝无出站请求。** 唯一端点是插件自身的本地 webserver 路由 `/status-bar/api/usage`（与 DSH Web UI 同源，`127.0.0.1`），用于提供图表分桶数据。 |
+| 网络 | 客户端只访问插件自身的本地 webserver 路由（与 DSH Web UI 同源，`127.0.0.1`）：`/status-bar/api/usage` 提供图表分桶数据，`/status-bar/api/holidays` 提供节假日日历。仅在你点击「刷新日历」或缓存过期（12 小时）时，host 才会向公开数据源 `cdn.jsdelivr.net`（holiday-cn 数据集）发起一次 GET 以更新日历——关掉「自动获取」即完全不出站。 |
 | 凭据 | **无。** 插件从不读取、存储或传输 API 密钥、Token 或 Cookie。 |
-| 用户数据 | 客户端：`localStorage["dsh.statusBar.v1"]`（底栏配置 + 价格手册——不含任何对话内容）。host 侧：上述用量账本（仅 token 计数，不含提示词、消息、文件内容）。 |
+| 用户数据 | 客户端：`localStorage["dsh.statusBar.v1"]`（底栏配置 + 价格手册 + 节假日例外）、`localStorage["dsh.statusBar.holidays.v1"]`（节假日日历缓存）——不含任何对话内容。host 侧：用量账本（仅 token 计数）与 `holidays.json` 日历缓存；均不含提示词、消息、文件内容。 |
 
 ## Troubleshooting（故障排查）
 
@@ -210,6 +218,8 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 | TPS 段为 0 / 空白 | 本会话尚未开始流式输出，或流已经结束（没有活跃生成时按设计显示 0）。每次重试都会重启测量窗口。 |
 | TPS 与其他插件冲突 | 设计上不存在——本插件**不注册任何共享投影键**。实时速率在客户端折叠本会话自己的事件窗口，因此其他状态栏/TPS 插件无法顶掉或遮蔽它。 |
 | 费用估算缺失 | 会话所用的模型都不在价格手册中（或价格全为 0）→ 在 设置 → 状态栏 → 模型价格手册 中添加。费用按手册费率估算（逐模型、平峰或峰谷），并非 provider 账单。 |
+| 费用比账单偏高/偏低 | 先看价格手册里该模型的时段徽标（峰时/谷时及其原因）：若是「非峰时时段」但实际应为峰时，检查时段是否填成了 24 小时制 `09:00`（本插件按 24 小时制解析）；若是周末/节假日判错，点「刷新日历」更新节假日日历，或手动添加例外日期。 |
+| 节假日日历获取失败 | 设置页会显示失败原因并回退为「仅按星期判断」（周末仍按谷时，调休上班日会判成谷时）。可稍后重试，或手动添加例外日期；也可关闭「自动获取」以避免任何出站请求。 |
 | 用量图表为空 | 该时段内还没有带 provider 用量上报的 assistant 消息，或 `DSH_HOME` 指向了别处（核对上面 `usage.jsonl` 的位置）。 |
 | 升级后界面异常 | 硬刷新窗口（客户端 bundle 可能过期），并在应用内「插件」页面核对插件版本。 |
 | 不确定当前装的是哪个版本 | 在终端（macOS/Linux）执行：`node -p "require(process.env.HOME + '/.dsh/profiles/desktop/node_modules/@bananiceee/dsh-status-bar/package.json').version"`——自建 web profile 时把 `desktop` 换成 `web`。 |

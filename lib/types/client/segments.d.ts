@@ -12,7 +12,9 @@ import type { ContextPressureProjection, TokenUsageProjection } from '@deepseek-
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import { type CostPrices, type StatusBarConfig, type SegmentId } from './config.ts';
 import type { NS } from './locales.ts';
-import { type SessionUsageClientState } from './session-usage-cost.ts';
+import type { HolidayCalendar, HolidayOverride } from './pricing-types.ts';
+import { type BillingReason, type DayFacts, type HolidayIndex } from './timezone.ts';
+import { type PricingContext, type SessionUsageClientState } from './session-usage-cost.ts';
 export type StatusState = 'running' | 'idle' | 'error';
 export interface SegmentView {
     id: SegmentId;
@@ -81,16 +83,21 @@ export declare function buildSegments(source: SegmentSource, config: StatusBarCo
  * straight from the user-maintained price book (each model has its own
  * prices and peak schedule). Returns null when the model has no entry —
  * the cost segment then hides instead of guessing.
+ *
  * When the model's peak/off-peak billing is on, the peak/off-peak input,
- * cache-hit, and output prices replace the flat rates, using the model's
- * timezone at `now` against ANY of its peak windows.
+ * cache-hit, and output prices replace the flat rates. Which tier applies is
+ * decided by {@link resolveBilling}: a working day inside one of the model's
+ * windows is peak, everything else — nights, weekends, holidays and 调休 rest
+ * days — is off-peak. `reason` says which of those it was, for the badges.
  */
-export declare function effectivePrices(model: ModelIdentity | null, cost: CostPrices, now: number): {
+export declare function effectivePrices(model: ModelIdentity | null, cost: CostPrices, now: number, dayRules?: boolean, calendars?: readonly HolidayCalendar[], overrides?: readonly HolidayOverride[], index?: HolidayIndex): {
     input: number;
     output: number;
     cacheRead: number;
     cacheWrite: number;
     source: 'flat' | 'peak' | 'offpeak';
+    reason: BillingReason | null;
+    day: DayFacts;
 } | null;
 /** Cost of one token-usage record at the given per-1M-token prices. */
 export declare function costOfUsage(usage: {
@@ -125,6 +132,6 @@ export interface UsageHistoryRow {
  * model's own price-book entry (with peak/off-peak) at the step's wall-clock
  * time.
  */
-export declare function usageHistory(chat: LegacyConversationSlice, state: SessionUsageClientState | undefined, cost: CostPrices, limit?: number): UsageHistoryRow[];
+export declare function usageHistory(chat: LegacyConversationSlice, state: SessionUsageClientState | undefined, cost: CostPrices, limit?: number, context?: PricingContext): UsageHistoryRow[];
 export {};
 //# sourceMappingURL=segments.d.ts.map
