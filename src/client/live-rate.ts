@@ -9,17 +9,30 @@
  * window's incremental `change` deltas and read by the bar through the
  * registration's `hooks` compartment (`useLiveRate`).
  *
- * Estimator semantics (unchanged from the host unit this replaces):
- * per-block character accumulation priced as `ceil(chars / charsPerToken)`
- * plus a fixed framing overhead, tool calls priced from name + argument
- * characters separately, one role overhead per stream once any block is
- * priced, and a `block-end` chunk re-pricing its slot from the full assembled
- * block. A provider `usage` chunk mid-stream replaces the estimate with exact
- * `outputTokens`. The estimated branch smooths per-chunk INSTANT rates with an
- * EWMA and a minimum inter-chunk interval (providers flush bursts with dt≈0);
- * the exact branch keeps the faithful window average with a span floor. Once
- * a stream settles the window is dropped and the rate reports 0 — no active
- * generation reads as zero instead of freezing on a stale value.
+ * Estimator semantics: per-block character accumulation priced as
+ * `ceil(chars / charsPerToken)` plus a fixed framing overhead, tool calls
+ * priced from name + argument characters separately, one role overhead per
+ * stream once any block is priced, and a `block-end` chunk re-pricing its slot
+ * from the full assembled block. A provider `usage` chunk mid-stream replaces
+ * the estimate with exact `outputTokens`.
+ *
+ * RATE MEASUREMENT — a trailing time window, not per-chunk instants. The
+ * browser receives the stream at whatever granularity the host forwards
+ * (0.2.0 delivers single-token deltas, sometimes several stamped with the same
+ * time), so a per-chunk instant rate divided by a floored inter-chunk interval
+ * saturates: one token per chunk over a 20 ms floor can never read above
+ * 50 tok/s, however fast the model is actually decoding. The estimated branch
+ * therefore counts accumulated output tokens over the last
+ * {@link RATE_WINDOW_MS} of stream time — `(tokens now − tokens at the window
+ * base) / (now − base time)`, which is granularity-independent and converges
+ * on the same figure the session's average decode rate reports. A window
+ * younger than {@link MIN_SPAN_MS}, or a burst whose stamps carry no elapsed
+ * time at all, falls back to the whole stream so far; a burst with a single
+ * distinct timestamp keeps the carried figure rather than inventing one. The
+ * exact branch (provider-reported usage) keeps the faithful stream average
+ * with the same span floor. Once a stream settles the window is dropped and
+ * the rate reports 0 — no active generation reads as zero instead of freezing
+ * on a stale value.
  *
  * @module @bananiceee/dsh-status-bar/client-live-rate
  */
@@ -43,14 +56,15 @@ export const BLOCK_OVERHEAD = 4
 /** Fixed framing tokens charged once per stream once any block is priced (role framing). */
 export const ROLE_OVERHEAD = 4
 
-/** Minimum inter-chunk interval for the estimated branch's instant rate. */
-export const MIN_DT_MS = 20
+/** Trailing measurement window of the estimated branch, in stream-time ms. */
+export const RATE_WINDOW_MS = 1_500
 
-/** Minimum window span for the exact (provider-reported) branch's average. */
+/**
+ * Minimum span a measurement may divide by, in ms. Below it the fold divides
+ * the whole stream instead, so a stream's first chunk cannot report a spike
+ * and a burst with one distinct timestamp cannot divide by ~zero.
+ */
 export const MIN_SPAN_MS = 250
-
-/** EWMA weight of the newest instant rate (0..1); higher = more responsive. */
-export const EWMA_ALPHA = 0.6
 
 /** Value the bar reads: the live rate is absent until the first measurable output. */
 export interface LiveTokenUsageView {
@@ -89,8 +103,8 @@ interface LiveRateState {
   firstOutputTime: number | null
   /** Time of the most recent counted output chunk, ms. */
   latestOutputTime: number | null
-  /** Time of the previous counted output chunk, ms (inter-chunk dt). */
-  prevOutputTime: number | null
+  /** Trailing measurement anchors (oldest first, newest last) for the rate window. */
+  samples: readonly RateSample[]
   /** Output tokens: provider-reported once a `usage` chunk lands, priced estimate before. */
   outputTokens: number
   /** Last measured rate (tok/s); 0 once the stream settles. */
@@ -112,7 +126,7 @@ function settled(): LiveRateState {
     step: null,
     firstOutputTime: null,
     latestOutputTime: null,
-    prevOutputTime: null,
+    samples: [],
     outputTokens: 0,
     tokensPerSecond: 0,
     blocks: [],
@@ -139,21 +153,48 @@ function usageOutputTokens(usage: TokenUsage | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
 
-/**
- * Instant rate of one counted delta: `added` tokens over the inter-chunk
- * interval, floored at MIN_DT_MS so burst-flushed deltas cannot report absurd
- * figures. The window's first chunk has no predecessor, so it is treated as
- * spaced at the floor too.
- */
-function instantRateOf(addedTokens: number, prevTime: number | null, nowTime: number): number {
-  const dt = prevTime === null ? MIN_DT_MS : Math.max(nowTime - prevTime, MIN_DT_MS)
-  return Math.round(addedTokens * 1_000 / dt * 10) / 10
+/** One measurement anchor: cumulative output tokens as of a stream time. */
+interface RateSample {
+  time: number
+  tokens: number
 }
 
-/** Exponential smoothing of the instant rate; a null carried rate adopts the first sample. */
-function ewmaRate(carried: number | null, instant: number): number {
-  if (carried === null) return instant
-  return Math.round((carried * (1 - EWMA_ALPHA) + instant * EWMA_ALPHA) * 10) / 10
+/**
+ * Append one sample and drop everything that fell out of the trailing window,
+ * keeping exactly one sample at or before the cutoff as the window base (the
+ * rate then divides real tokens by real elapsed time across the whole window).
+ */
+function pushSample(samples: readonly RateSample[], sample: RateSample): RateSample[] {
+  const next = [...samples, sample]
+  const cutoff = sample.time - RATE_WINDOW_MS
+  let base = 0
+  while (base + 2 < next.length && (next[base + 1]?.time ?? Number.POSITIVE_INFINITY) <= cutoff) base += 1
+  return base === 0 ? next : next.slice(base)
+}
+
+/**
+ * Estimated generation rate over the trailing window: real accumulated tokens
+ * over real elapsed stream time, so the figure does not depend on how finely
+ * the host forwarded the stream. Falls back to the whole stream while the
+ * window is younger than MIN_SPAN_MS; returns the carried rate when the
+ * available stamps carry no elapsed time at all (a single-timestamp burst).
+ */
+function windowRate(
+  samples: readonly RateSample[],
+  firstOutputTime: number,
+  outputTokens: number,
+  nowTime: number,
+  carried: number | null,
+): number | null {
+  const base = samples[0]
+  let tokens = base === undefined ? outputTokens : outputTokens - base.tokens
+  let span = base === undefined ? 0 : nowTime - base.time
+  if (span < MIN_SPAN_MS) {
+    tokens = outputTokens
+    span = nowTime - firstOutputTime
+  }
+  if (span <= 0) return carried
+  return Math.round(tokens * 1_000 / span * 10) / 10
 }
 
 /** Window average for the exact branch: real tokens over real elapsed time, span-floored. */
@@ -396,7 +437,7 @@ export class LiveRateStore implements LiveRateSource {
     if (chunk.type === 'usage') {
       const reported = usageOutputTokens(chunk.usage)
       if (reported === null) return
-      // Exact buckets supersede the estimate; the rate is the faithful window
+      // Exact buckets supersede the estimate; the rate is the faithful stream
       // average (provider tokens over real elapsed time), span-floored.
       const first = fresh || state.firstOutputTime === null ? time : state.firstOutputTime
       this.state = {
@@ -405,7 +446,7 @@ export class LiveRateStore implements LiveRateSource {
         step,
         firstOutputTime: first,
         latestOutputTime: time,
-        prevOutputTime: time,
+        samples: [],
         outputTokens: reported,
         exact: true,
         blocks: [],
@@ -431,7 +472,7 @@ export class LiveRateStore implements LiveRateSource {
     const firstOutputTime = state.firstOutputTime === null ? time : state.firstOutputTime
     if (added <= 0) {
       // A block-end reprice corrected the total without adding tokens: keep
-      // the rate and the measurement clock exactly where they are.
+      // the rate and the measurement anchors exactly where they are.
       this.state = {
         ...state,
         turn,
@@ -444,6 +485,8 @@ export class LiveRateStore implements LiveRateSource {
       }
       return
     }
+    // One anchor per counted delta; the rate is read off the trailing window.
+    const samples = pushSample(state.samples, { time, tokens: outputTokens })
     this.state = {
       ...state,
       turn,
@@ -453,9 +496,9 @@ export class LiveRateStore implements LiveRateSource {
       pricedBlocks: book.pricedBlocks,
       firstOutputTime,
       latestOutputTime: time,
-      prevOutputTime: time,
+      samples,
       outputTokens,
-      tokensPerSecond: ewmaRate(state.tokensPerSecond, instantRateOf(added, fresh ? null : state.prevOutputTime, time)),
+      tokensPerSecond: windowRate(samples, firstOutputTime, outputTokens, time, state.tokensPerSecond),
     }
   }
 }

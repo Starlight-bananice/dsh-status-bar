@@ -65,7 +65,7 @@ DSH 0.2.0 removed `@deepseek-ai/dsh-client-runtime` and split what the old Conve
 dsh plugin --profile web add @bananiceee/dsh-status-bar
 
 # Or pin an exact npm version
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.0
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.1
 
 # From a local checkout (profile assembly; `web` is a hardcoded alias for `--profile web`)
 dsh plugin --profile web add ../dsh-status-bar
@@ -75,7 +75,7 @@ dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar
 
 # Or a pinned release tarball — immutable and versioned (attached to every
 # GitHub release; handy when git access to the repo is awkward)
-dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.0/bananiceee-dsh-status-bar-0.2.0.tgz
+dsh plugin --profile web add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.1/bananiceee-dsh-status-bar-0.2.1.tgz
 ```
 > **Note:** pnpm 11 enforces a 24h `minimumReleaseAge` for freshly published packages — if a same-day release is rejected, append `--config.minimumReleaseAge=0` to the `dsh plugin add` command.
 
@@ -97,13 +97,13 @@ Then start/restart DSH Web. No configuration is required — the bar appears wit
 dsh plugin --profile web update @bananiceee/dsh-status-bar
 
 # or re-add a pinned version
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.0
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.1
 
 # github: installs — pnpm pins a ref-less `github:` dependency to the commit
 # resolved at install time, so `dsh plugin update github:...` reports
 # "Already up to date" and keeps the old build. Upgrade with a re-add:
 dsh plugin --profile web remove @bananiceee/dsh-status-bar
-dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.2.0
+dsh plugin --profile web add github:Starlight-bananice/dsh-status-bar#v0.2.1
 ```
 
 ### Disable

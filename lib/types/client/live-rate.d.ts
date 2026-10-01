@@ -9,17 +9,30 @@
  * window's incremental `change` deltas and read by the bar through the
  * registration's `hooks` compartment (`useLiveRate`).
  *
- * Estimator semantics (unchanged from the host unit this replaces):
- * per-block character accumulation priced as `ceil(chars / charsPerToken)`
- * plus a fixed framing overhead, tool calls priced from name + argument
- * characters separately, one role overhead per stream once any block is
- * priced, and a `block-end` chunk re-pricing its slot from the full assembled
- * block. A provider `usage` chunk mid-stream replaces the estimate with exact
- * `outputTokens`. The estimated branch smooths per-chunk INSTANT rates with an
- * EWMA and a minimum inter-chunk interval (providers flush bursts with dt≈0);
- * the exact branch keeps the faithful window average with a span floor. Once
- * a stream settles the window is dropped and the rate reports 0 — no active
- * generation reads as zero instead of freezing on a stale value.
+ * Estimator semantics: per-block character accumulation priced as
+ * `ceil(chars / charsPerToken)` plus a fixed framing overhead, tool calls
+ * priced from name + argument characters separately, one role overhead per
+ * stream once any block is priced, and a `block-end` chunk re-pricing its slot
+ * from the full assembled block. A provider `usage` chunk mid-stream replaces
+ * the estimate with exact `outputTokens`.
+ *
+ * RATE MEASUREMENT — a trailing time window, not per-chunk instants. The
+ * browser receives the stream at whatever granularity the host forwards
+ * (0.2.0 delivers single-token deltas, sometimes several stamped with the same
+ * time), so a per-chunk instant rate divided by a floored inter-chunk interval
+ * saturates: one token per chunk over a 20 ms floor can never read above
+ * 50 tok/s, however fast the model is actually decoding. The estimated branch
+ * therefore counts accumulated output tokens over the last
+ * {@link RATE_WINDOW_MS} of stream time — `(tokens now − tokens at the window
+ * base) / (now − base time)`, which is granularity-independent and converges
+ * on the same figure the session's average decode rate reports. A window
+ * younger than {@link MIN_SPAN_MS}, or a burst whose stamps carry no elapsed
+ * time at all, falls back to the whole stream so far; a burst with a single
+ * distinct timestamp keeps the carried figure rather than inventing one. The
+ * exact branch (provider-reported usage) keeps the faithful stream average
+ * with the same span floor. Once a stream settles the window is dropped and
+ * the rate reports 0 — no active generation reads as zero instead of freezing
+ * on a stale value.
  *
  * @module @bananiceee/dsh-status-bar/client-live-rate
  */
@@ -31,12 +44,14 @@ export declare const CHARS_PER_TOKEN = 4;
 export declare const BLOCK_OVERHEAD = 4;
 /** Fixed framing tokens charged once per stream once any block is priced (role framing). */
 export declare const ROLE_OVERHEAD = 4;
-/** Minimum inter-chunk interval for the estimated branch's instant rate. */
-export declare const MIN_DT_MS = 20;
-/** Minimum window span for the exact (provider-reported) branch's average. */
+/** Trailing measurement window of the estimated branch, in stream-time ms. */
+export declare const RATE_WINDOW_MS = 1500;
+/**
+ * Minimum span a measurement may divide by, in ms. Below it the fold divides
+ * the whole stream instead, so a stream's first chunk cannot report a spike
+ * and a burst with one distinct timestamp cannot divide by ~zero.
+ */
 export declare const MIN_SPAN_MS = 250;
-/** EWMA weight of the newest instant rate (0..1); higher = more responsive. */
-export declare const EWMA_ALPHA = 0.6;
 /** Value the bar reads: the live rate is absent until the first measurable output. */
 export interface LiveTokenUsageView {
     tokensPerSecond?: number;
