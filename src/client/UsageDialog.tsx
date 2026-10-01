@@ -8,9 +8,9 @@
  */
 
 import { memo, useState } from 'react'
-import { IconDataOutline16, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconDataOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import { modelConfigFor, setModelConfig, useStatusBarConfig, type ModelConfig } from './config.ts'
 import { effectivePrices, usageHistory, type UsageHistoryRow } from './segments.ts'
 import { costBreakdown } from './session-usage-cost.ts'
@@ -129,8 +129,11 @@ function PeakBadge({ config, now, t }: {
 
 export const UsageDialogEntry = memo(function UsageDialogEntry(props: UsageDialogEntryProps) {
   const config = useStatusBarConfig()
-  const { session, useProjection, useSessions, sessionId, t } = props
+  const { useChat, useProjection, useSessions, sessionId, t } = props
   const [open, setOpen] = useState(false)
+  // The per-step history walks the settled Chat slice (0.2.0 moved the
+  // message nodes out of the Conversation snapshot into the Chat target).
+  const session = useChat(state => state.legacy)
 
   const usage = useProjection('tokenUsage')
   const pressure = useProjection('contextPressure')
@@ -173,7 +176,7 @@ export const UsageDialogEntry = memo(function UsageDialogEntry(props: UsageDialo
         aria-label={t('usage.title')}
         onClick={() => setOpen(true)}
       >
-        <IconDataOutline16 />
+        <IconDataOutlineRegular size={16} />
       </button>
       <Modal
         open={open}

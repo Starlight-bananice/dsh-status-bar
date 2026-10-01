@@ -5,11 +5,9 @@
  * that are currently hidden for lack of data).
  */
 
-import type {
-  ConversationSnapshot,
-  JobView,
-  SessionSummary,
-} from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { LegacyConversationSlice } from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { JobView } from '@deepseek-ai/dsh-jobs/view'
 import type { SessionStatsProjection } from '@deepseek-ai/dsh-session-stats/client'
 import type {
   ContextPressureProjection,
@@ -31,19 +29,24 @@ export interface SegmentView {
   text: string
 }
 
-/** Last model identity (projection first, node provenance as fallback). */
+/** Last model identity (projection first, node provider metadata as fallback). */
 export interface ModelIdentity {
   provider: string
   model: string
 }
 
 export interface SegmentSource {
-  session: ConversationSnapshot
+  /** Settled-message slice of the Chat view: nodes, turn timings, partial, running calls. */
+  chat: LegacyConversationSlice
+  /** Session lifecycle facts the bar reads (both from the Session snapshot). */
+  session: { running: boolean; lastAgentError: string | null }
+  /** Messages still waiting for their own turn (composer inbox). */
+  queueLength: number
   /** Whole-log projection, or the window fold when the unit is absent. */
   stats: SessionStatsProjection | null
   usage: TokenUsageProjection | undefined
   pressure: ContextPressureProjection | undefined
-  /** Live generation rate from this plugin's host-side statusBarLiveTokenUsage fold (stream estimate, carried while idle). */
+  /** Live generation rate from this plugin's client-side stream fold (absent while idle). */
   liveRate: number | undefined
   /** Last model identity from the host-side sessionModel projection. */
   sessionModel: ModelIdentity | undefined
@@ -62,7 +65,7 @@ type T = TranslateNS<typeof NS>
  * shipped stats line's fallback so assemblies without the `sessionStats`
  * projection still get counts and wall times.
  */
-export function deriveWindowStats(session: ConversationSnapshot): SessionStatsProjection {
+export function deriveWindowStats(chat: LegacyConversationSlice): SessionStatsProjection {
   let turns = 0
   let steps = 0
   let llmMs = 0
@@ -72,7 +75,7 @@ export function deriveWindowStats(session: ConversationSnapshot): SessionStatsPr
   let decodeMs = 0
   let decodeTokens = 0
   const seenTurns = new Set<number>()
-  for (const node of session.nodes) {
+  for (const node of chat.nodes) {
     if (node.kind === 'tool-result') {
       if (node.callTime !== null) toolMs += Math.max(0, node.time - node.callTime)
       continue
@@ -110,25 +113,25 @@ export function billedInputTokens(usage: TokenUsageProjection): number {
 
 /**
  * Last model identity: the host `sessionModel` projection when served,
- * falling back to the window's last assistant node with provenance (the
- * shipped assembly omits provenance, so the projection is the live path).
+ * falling back to the window's last assistant node's provider metadata (the
+ * shipped assembly omits it, so the projection is the live path).
  */
 export function lastModel(
-  session: ConversationSnapshot,
+  chat: LegacyConversationSlice,
   sessionModel: ModelIdentity | undefined,
 ): ModelIdentity | null {
   if (sessionModel !== undefined && sessionModel.model !== null) return sessionModel
-  for (let i = session.nodes.length - 1; i >= 0; i -= 1) {
-    const node = session.nodes[i]
-    if (node?.kind === 'assistant' && node.provenance !== undefined) return node.provenance
+  for (let i = chat.nodes.length - 1; i >= 0; i -= 1) {
+    const node = chat.nodes[i]
+    if (node?.kind === 'assistant' && node.providerMetadata !== undefined) return node.providerMetadata
   }
   return null
 }
 
 /** Failed/retried steps visible in the window (durable notices + turn errors). */
-export function errorCount(session: ConversationSnapshot): number {
+export function errorCount(chat: LegacyConversationSlice): number {
   let count = 0
-  for (const node of session.nodes) {
+  for (const node of chat.nodes) {
     if (node.kind === 'model-retry' || node.kind === 'turn-error' || node.kind === 'turn-max-tokens') count += 1
   }
   return count
@@ -145,10 +148,10 @@ export function liveJobCount(jobs: readonly JobView[] | undefined): number {
 }
 
 /** Session wall time: first turn start → last turn end (or now while running). */
-export function sessionElapsed(session: ConversationSnapshot, now: number): number | null {
+export function sessionElapsed(chat: LegacyConversationSlice, now: number): number | null {
   let start: number | null = null
   let end: number | null = null
-  for (const timing of session.turnTimings.values()) {
+  for (const timing of chat.turnTimings.values()) {
     if (start === null || timing.startTime < start) start = timing.startTime
     const t = timing.endTime ?? now
     if (end === null || t > end) end = t
@@ -239,18 +242,19 @@ export interface UsageHistoryRow {
  * Recent per-step usage rows from the settled window: the last assistant
  * nodes that carried provider-reported usage, newest first. Each step's cost
  * is priced with the model that ACTUALLY produced that step (from the host
- * `sessionUsage` fold, node provenance as fallback), applying that model's
- * own price-book entry (with peak/off-peak) at the step's wall-clock time.
+ * `sessionUsage` fold, node provider metadata as fallback), applying that
+ * model's own price-book entry (with peak/off-peak) at the step's wall-clock
+ * time.
  */
 export function usageHistory(
-  session: ConversationSnapshot,
+  chat: LegacyConversationSlice,
   state: SessionUsageClientState | undefined,
   cost: CostPrices,
   limit = 200,
 ): UsageHistoryRow[] {
   const rows: UsageHistoryRow[] = []
-  for (let i = session.nodes.length - 1; i >= 0 && rows.length < limit; i -= 1) {
-    const node = session.nodes[i]
+  for (let i = chat.nodes.length - 1; i >= 0 && rows.length < limit; i -= 1) {
+    const node = chat.nodes[i]
     if (node?.kind !== 'assistant' || node.usage === undefined) continue
     const usage = node.usage as { inputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number; outputTokens?: number } | null | undefined
     if (usage === null || typeof usage !== 'object') continue
@@ -259,8 +263,8 @@ export function usageHistory(
     const cacheWrite = usage.cacheWriteTokens ?? 0
     const output = usage.outputTokens ?? 0
     if (input <= 0 && output <= 0) continue
-    const model = stepModel(state, node.seq, node.provenance)
-    const costRow = stepCost(state, node.seq, node.provenance, {
+    const model = stepModel(state, node.seq, node.providerMetadata)
+    const costRow = stepCost(state, node.seq, node.providerMetadata, {
       inputTokens: usage.inputTokens ?? 0,
       cacheReadTokens: cacheRead,
       cacheWriteTokens: cacheWrite,
@@ -286,10 +290,10 @@ function segmentView(
   config: StatusBarConfig,
   t: T,
 ): SegmentView | null {
-  const { session, stats, usage, pressure, liveRate, jobs, summary, now } = source
+  const { chat, session, queueLength, stats, usage, pressure, liveRate, jobs, summary, now } = source
   switch (id) {
     case 'status': {
-      const running = session.running || session.partial !== null || session.runningCalls.length > 0
+      const running = session.running || chat.partial !== null || chat.runningCalls.length > 0
       const failed = !running && session.lastAgentError !== null
       const state: StatusState = running ? 'running' : failed ? 'error' : 'idle'
       const text = running
@@ -300,7 +304,7 @@ function segmentView(
       return { id, state, text }
     }
     case 'model': {
-      const identity = lastModel(session, source.sessionModel)
+      const identity = lastModel(chat, source.sessionModel)
       return identity === null ? null : { id, text: identity.model }
     }
     case 'title': {
@@ -313,10 +317,6 @@ function segmentView(
       if (!cwd) return null
       const base = cwd.replace(/[\\/]+$/, '').split(/[\\/]/).pop()
       return { id, text: base ?? cwd }
-    }
-    case 'agent': {
-      const preset = summary?.agentPreset
-      return preset ? { id, text: preset } : null
     }
     case 'counts': {
       if (stats === null || stats.steps <= 0) return null
@@ -375,7 +375,7 @@ function segmentView(
       return { id, text: t('bar.tps', { throughput: formatTokensPerSecond(rate) }) }
     }
     case 'sessionTime': {
-      const elapsed = sessionElapsed(session, now)
+      const elapsed = sessionElapsed(chat, now)
       return elapsed === null ? null : { id, text: t('bar.sessionTime', { duration: formatDuration(elapsed) }) }
     }
     case 'cost': {
@@ -388,7 +388,7 @@ function segmentView(
       }
       // 以下为回退路径：客户端独立装配（无 host 投影）时保持原行为
       if (usage === undefined) return null
-      const model = lastModel(session, source.sessionModel)
+      const model = lastModel(chat, source.sessionModel)
       const prices = effectivePrices(model, config.cost, now)
       if (prices === null) return null
       if (prices.input <= 0 && prices.cacheRead <= 0 && prices.cacheWrite <= 0 && prices.output <= 0) return null
@@ -401,11 +401,11 @@ function segmentView(
       return count <= 0 ? null : { id, text: t('bar.jobs', { count }) }
     }
     case 'queue': {
-      const count = session.queue.length
+      const count = queueLength
       return count <= 0 ? null : { id, text: t('bar.queue', { count }) }
     }
     case 'errors': {
-      const count = errorCount(session)
+      const count = errorCount(chat)
       return count <= 0 ? null : { id, text: t('bar.errors', { count }) }
     }
     /* v8 ignore next -- closed SegmentId union */

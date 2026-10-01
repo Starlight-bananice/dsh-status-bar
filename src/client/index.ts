@@ -7,7 +7,11 @@
  *  3. `settings.section`: the management page.
  */
 
+import type { IJobs } from '@deepseek-ai/dsh-api-job-controller/client'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { en, NS, zh } from './locales.ts'
+import { LiveRateStore } from './live-rate.ts'
 import { StatusBarDockEntry } from './StatusBar.tsx'
 import { QuickMenuEntry } from './QuickMenu.tsx'
 import { SettingsSection } from './SettingsSection.tsx'
@@ -30,6 +34,13 @@ type ClientContext = {
     register(ns: string, dictionaries: { zh: Record<string, string>; en: Record<string, string> }): void
     bind(ns: string): (key: string, params?: Record<string, string | number>) => string
   }
+  /** Job Controller client face: the live rosters and their reference-counted watchers. */
+  jobs: {
+    readonly state: IJobs['state']
+    watchRows(sessionId: SessionId): () => void
+  }
+  /** Session Controller client face: retaining the current session opens its live event window. */
+  sessions: ISessions
   effect(fn: () => void | (() => void), label: string): void
 }
 
@@ -761,7 +772,7 @@ function installStyles(): () => void {
 }
 
 /** Client services required by this plugin. */
-export const inject = ['slots', 'locale']
+export const inject = ['slots', 'locale', 'jobs', 'sessions']
 
 /** Register the bar, the quick menu, and the management page. */
 export function apply(ctx: ClientContext): void {
@@ -770,7 +781,28 @@ export function apply(ctx: ClientContext): void {
 
   // The bar shadows the shipped `stats` cell: same id, lower priority, so it
   // renders while this plugin is live and the built-in line returns on unload.
-  ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({ name: 'conversation.composer.dock', id: 'stats', priority: -1, order: 0, locale: NS }, StatusBarDockEntry))
+  // The jobs segment rides the `jobs` client service (the same roster source
+  // the shipped session-header job list uses): the `hooks` compartment becomes
+  // the component's `useJobs` selector hook, and `watchRows` opens this
+  // session's roster stream while the bar is mounted.
+  // The live TPS figure rides a client-side fold of the session's event window
+  // (`assistant/live-chunk`): 0.2.0 has no durable chunk event, so a host
+  // projection can no longer serve it. One store per registration; the bar
+  // opens the watch while it is mounted.
+  const liveRate = new LiveRateStore()
+  ctx.effect(() => () => { liveRate.reset() }, 'dsh-status-bar: live rate teardown')
+  ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
+    name: 'conversation.composer.dock',
+    id: 'stats',
+    priority: -1,
+    order: 0,
+    locale: NS,
+    inject: () => ({
+      hooks: { jobs: ctx.jobs.state, liveRate },
+      watchRows: (sessionId: SessionId) => ctx.jobs.watchRows(sessionId),
+      watchLiveRate: (sessionId: SessionId) => liveRate.watch(ctx.sessions, sessionId),
+    }),
+  }, StatusBarDockEntry))
   // Quick-toggle gear at the right end of the composer tool row, next to it
   // the usage & cost dialog button.
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'status-bar-quick', order: 950, locale: NS }, QuickMenuEntry))

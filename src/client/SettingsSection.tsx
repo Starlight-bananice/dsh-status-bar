@@ -29,6 +29,7 @@ import {
 import { effectivePrices } from './segments.ts'
 import { hourInTimezone, inAnyPeakWindow, peakWindowsLabel, TIMEZONE_OPTIONS } from './timezone.ts'
 import { NS } from './locales.ts'
+import { useCurrentModel } from './live-model.ts'
 import './projections.ts'
 
 export type SettingsSectionProps =
@@ -250,7 +251,7 @@ function ModelCard({
 
 export const SettingsSection = memo(function SettingsSection(props: SettingsSectionProps) {
   const config = useStatusBarConfig()
-  const { useSessions, t } = props
+  const { t } = props
   const [newModel, setNewModel] = useState('')
 
   const updateCost = (patch: Partial<CostPrices>): void => {
@@ -258,10 +259,9 @@ export const SettingsSection = memo(function SettingsSection(props: SettingsSect
   }
 
   const modelNames = Object.keys(config.cost.models)
-  const currentModel = useSessions(state =>
-    state.current !== undefined
-      ? state.byId[state.current]?.projectionValues?.sessionModel?.model ?? undefined
-      : undefined)
+  // Published by the session-scoped bar: 0.2.0 has no global "current session"
+  // in the list state, so the price book previews the model the bar last saw.
+  const currentModel = useCurrentModel()
   const currentPricing = effectivePrices(
     currentModel !== undefined ? { provider: 'unknown', model: currentModel } : null,
     config.cost,

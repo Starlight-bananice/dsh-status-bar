@@ -1,15 +1,13 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "rootDir": "src/client",
-    "outDir": ".client-build",
     "declaration": true,
+    "emitDeclarationOnly": true,
     "declarationDir": "lib/types/client",
-    "sourceMap": true,
     "declarationMap": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -21,14 +19,9 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": false,
     "types": ["react", "react-dom"],
-    "typeRoots": [
-      "./node_modules/@types",
-      "../packages/client/ui-primitives/node_modules/@types",
-      "../node_modules/@types"
-    ],
+    "typeRoots": ["./node_modules/@types"],
     "noEmitOnError": true
   },
   "include": ["src/client/**/*.ts", "src/client/**/*.tsx"],

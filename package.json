@@ -1,6 +1,6 @@
 {
   "name": "@bananiceee/dsh-status-bar",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Starlight-bananice/dsh-status-bar.git"
@@ -9,7 +9,7 @@
   "bugs": {
     "url": "https://github.com/Starlight-bananice/dsh-status-bar/issues"
   },
-  "description": "DSH 底栏管理插件：原生底部状态栏超长、内容易被截断；本插件提供接近原生体验的可配置状态栏——17 个信息段任意开关/排序，并带换行、实时 TPS、费用估算等多项实用选项。The native DSH bottom status bar is too long and parts get truncated; this plugin delivers a near-native, fully configurable status bar — 17 toggleable/reorderable segments, plus useful options such as wrapping, live TPS and cost estimation.",
+  "description": "DSH 底栏管理插件：原生底部状态栏超长、内容易被截断；本插件提供接近原生体验的可配置状态栏——16 个信息段任意开关/排序，并带换行、实时 TPS、费用估算等多项实用选项（适配 DSH 0.2.0）。The native DSH bottom status bar is too long and parts get truncated; this plugin delivers a near-native, fully configurable status bar — 16 toggleable/reorderable segments, plus useful options such as wrapping, live TPS and cost estimation (DSH 0.2.0).",
   "keywords": [
     "deepseek",
     "deepseek-harness",
@@ -49,23 +49,43 @@
       "patch": "./cordis.patch.yml"
     },
     "client": {
+      "platform": "web",
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-api-job-controller",
+        "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-slots",
-        "@deepseek-ai/dsh-client-locale"
-      ],
-      "platform": "web"
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
     }
   },
   "dependencies": {
     "zod": "^4.4.0"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-api-job-controller": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-connection": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-store": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-chat": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-session": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-jobs": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session-projection": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session-stats": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-token-meter": "0.2.0-rc.2",
     "@types/node": "^24.13.3",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3"
   },

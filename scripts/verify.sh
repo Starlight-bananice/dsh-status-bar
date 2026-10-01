@@ -1,13 +1,13 @@
 #!/bin/bash
 # Verify the committed lib/ artifacts are in sync with src/:
-#   full rebuild (host tsc + client tsdown) then fail if the rebuilt
-#   output differs from what is committed.
+#   full rebuild (host tsc + client declarations + client tsdown bundle) then
+#   fail if the rebuilt output differs from what is committed.
 #
 # Run before pushing anything that touches src/ (the repo's pre-push hook
 # and the lib-sync CI workflow both use this property).
 #
-# Requires the same DSH_CHECKOUT as build.sh (development-only; end users
-# never need it — v0.1.5+ installs ship a prebuilt lib/).
+# Self-contained: everything resolves from this package's node_modules (the
+# pinned @deepseek-ai/* devDependencies), so no DSH checkout is needed.
 #
 # Prereq: `pnpm install --frozen-lockfile` so the rebuild uses the exact
 # toolchain recorded in pnpm-lock.yaml — a stale tsdown/typescript makes the
@@ -24,7 +24,6 @@ fi
 
 echo "=== verify: rebuilding host + client ==="
 bash scripts/build.sh
-npm run build:client
 
 echo "=== verify: diff lib/ against HEAD ==="
 # lib/*.map embed raw source text whose EOLs follow the building machine;

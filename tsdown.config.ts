@@ -3,11 +3,18 @@ import type { UserConfig } from 'tsdown'
 
 const PLUGIN_ID = '@bananiceee/dsh-status-bar'
 
+// Externals are the shell's frozen module table (DSH 0.2.0-rc.2 seeds exactly
+// react, react/jsx-runtime, react-dom, react-dom/client, @deepseek-ai/cordis,
+// @deepseek-ai/dsh-client-store, @deepseek-ai/dsh-client-ui-slots,
+// @deepseek-ai/dsh-client-ui-primitives and @deepseek-ai/dsh-client-ui-dockkit).
+// Everything the bundle requires at runtime must be one of these, so the
+// browser module system can answer the `require` from its seed table.
+// Type-only imports of other @deepseek-ai packages are erased and create no
+// request, which is why they need no entry here.
 const CLIENT_EXTERNALS = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client',
-  'cordis',
+  '@deepseek-ai/cordis',
   '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-runtime/client',
   '@deepseek-ai/dsh-client-ui-primitives',
 ]
 

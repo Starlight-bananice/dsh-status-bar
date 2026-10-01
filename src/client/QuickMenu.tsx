@@ -6,7 +6,7 @@
  */
 
 import { memo, useRef, useState } from 'react'
-import { IconSettingsOutline14, Menu, type MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconSettingsOutlineRegular, Menu, type MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { SEGMENT_IDS, SEGMENT_META, resetConfig, toggleSegment, updateConfig, useStatusBarConfig } from './config.ts'
 import { NS } from './locales.ts'
@@ -62,7 +62,7 @@ export const QuickMenuEntry = memo(function QuickMenuEntry(props: QuickMenuEntry
             aria-expanded={open}
             onClick={() => setOpen(!open)}
           >
-            <IconSettingsOutline14 />
+            <IconSettingsOutlineRegular size={14} />
           </button>
         </div>
       )}

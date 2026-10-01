@@ -1,0 +1,1 @@
+{"version":3,"file":"QuickMenu.d.ts","sourceRoot":"","sources":["../../../src/client/QuickMenu.tsx"],"names":[],"mappings":"AAAA;;;;;GAKG;AAIH,OAAO,KAAK,EAAE,WAAW,EAAE,YAAY,EAAE,MAAM,kCAAkC,CAAA;AAEjF,OAAO,EAAE,EAAE,EAAE,MAAM,cAAc,CAAA;AAEjC,MAAM,MAAM,mBAAmB,GAC7B,YAAY,CAAC,0BAA0B,CAAC,GAAG,WAAW,CAAC,OAAO,EAAE,CAAC,CAAA;AAKnE,eAAO,MAAM,cAAc,8CAAuC,mBAAmB,iCA0DnF,CAAA"}

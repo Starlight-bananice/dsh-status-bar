@@ -1,19 +1,12 @@
 /**
  * dsh-status-bar — DSH 底栏管理插件（host 侧）。
  *
- * Host side provides three things the browser cannot:
+ * Host side provides the durable folds the browser cannot compute from its
+ * window alone:
  *  1. the `sessionModel` projection — the last model that produced an
  *     assistant message (the client snapshot's assistant nodes carry no
  *     provenance, so the bar reads this fold instead);
- *  2. the `statusBarLiveTokenUsage` projection — the real-time generation
- *     rate of the current stream, folded from the `assistant/chunk` feed and
- *     served over the projection registry (DSH's live-state channel), so the
- *     bar's TPS segment tracks the stream chunk by chunk without any external
- *     live-stats plugin. The key is plugin-private on purpose: the
- *     dsh-web-ui family's `@linxin666/dsh-live-stats` serves the separate
- *     `liveTokenUsage` key, and the two never contend for the same registry
- *     entry — enabling both plugins keeps each TPS display working.
- *  The `sessionUsage` projection — whole-session per-model usage plus a
+ *  2. the `sessionUsage` projection — whole-session per-model usage plus a
  *  per-step model/time ledger — lets the client price each step with the
  *  model that actually produced it (and that model's peak schedule).
  *  3. a usage ledger — subscribes the global `session/event` feed, persists
@@ -26,12 +19,11 @@
  * @module @bananiceee/dsh-status-bar
  */
 
-import type { Context } from 'cordis'
+import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { sessionModelProjectionDefinition } from './model-projection.ts'
-import { statusBarLiveTokenUsageProjectionDefinition } from './live-rate.ts'
 import { sessionUsageProjectionDefinition } from './session-usage.ts'
 import { ledgerDataDir, UsageLedger, type UsagePeriod } from './usage-ledger.ts'
 
@@ -60,16 +52,6 @@ export function apply(ctx: Context): void {
   // Whole-session per-model usage (+ per-step model/time ledger) for accurate
   // per-model / per-step cost pricing client-side.
   ctx.effect(() => ctx.sessionProjections.register(sessionUsageProjectionDefinition), 'dsh-status-bar: sessionUsage projection')
-  // Live rate: the same registry delivers the streaming throughput to the bar
-  // (see live-rate.ts for the fold and its carried-rate semantics). The
-  // `statusBarLiveTokenUsage` key is PLUGIN-PRIVATE by design — it is never
-  // shared with peer plugins, so registration is unconditional. The
-  // dsh-web-ui family's `@linxin666/dsh-live-stats` serves its own separate
-  // `liveTokenUsage` key; with distinct keys the registry keeps both units and
-  // neither plugin can displace the other's TPS feed, whatever the order of
-  // registration or the peer's stateVersion.
-  ctx.effect(() => ctx.sessionProjections.register(statusBarLiveTokenUsageProjectionDefinition), 'dsh-status-bar: statusBarLiveTokenUsage projection')
-
   // Usage ledger: fold every committed assistant message into the local
   // JSONL-backed hourly store (feed listener + API share the instance).
   const ledger = new UsageLedger(ledgerDataDir(process.env.DSH_HOME))

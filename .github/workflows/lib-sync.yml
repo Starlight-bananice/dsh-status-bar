@@ -37,12 +37,13 @@ jobs:
       - name: Package metadata sanity
         run: node -e "const p=require('./package.json'); for (const k of ['version','main','exports']) if (!p[k]) throw new Error('missing ' + k); console.log('ok', p.version)"
 
-  # Full drift check: rebuild host + client against a real DeepSeek Harness
-  # checkout and fail when the committed lib/ differs from the rebuild.
-  # Heavy (clones + installs the harness monorepo) → manual dispatch, or on
-  # PRs that touch src/ or the build config.
+  # Full drift check: rebuild host + client and fail when the committed lib/
+  # differs from the rebuild. Self-contained since 0.2.0 — the DSH packages the
+  # plugin compiles against are pinned devDependencies, so no harness checkout
+  # is cloned or installed. Runs on manual dispatch, or on PRs that touch src/
+  # or the build config.
   drift:
-    name: lib/ drift check (needs harness checkout)
+    name: lib/ drift check
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     steps:
@@ -70,24 +71,13 @@ jobs:
           else
             echo "build=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Clone DeepSeek Harness checkout
-        if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
-        run: git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness "$HOME/deepseek-harness"
-      - name: Install plugin devDependencies
+      - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
           npm ls --depth 0 || true
-      - name: Install harness dependencies
-        if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
-        working-directory: $HOME/deepseek-harness
-        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Rebuild host + client
         if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
-        env:
-          DSH_CHECKOUT: ${{ runner.home }}/deepseek-harness
-        run: |
-          bash scripts/build.sh
-          npm run build:client
+        run: bash scripts/build.sh
       - name: Fail if committed lib/ drifted
         if: steps.changed.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
         run: |

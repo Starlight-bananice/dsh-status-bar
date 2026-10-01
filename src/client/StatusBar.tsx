@@ -11,17 +11,41 @@
  */
 
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { JobView } from '@deepseek-ai/dsh-jobs/view'
+import type { IJobs } from '@deepseek-ai/dsh-api-job-controller/client'
+import type { LiveRateSource } from './live-rate.ts'
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { JobView, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { useStatusBarConfig } from './config.ts'
+import { noteCurrentModel } from './live-model.ts'
 import { buildSegments, deriveWindowStats, type SegmentView } from './segments.ts'
 import { NS } from './locales.ts'
 import './projections.ts'
 
-/** Full props for the composer-dock entry (owner InputZone + standard kit + locale). */
+/**
+ * Business face the bar's registration hands to the component: the client
+ * jobs roster observable (synthesized into a `useJobs` selector hook) and the
+ * reference-counted roster watcher. Both come from the `jobs` client service,
+ * the same source the shipped header job list uses.
+ */
+export interface StatusBarInjected {
+  hooks: {
+    /** Live job rosters keyed by session id. */
+    jobs: IJobs['state']
+    /** Live generation rate of the current stream, folded from the session event window. */
+    liveRate: LiveRateSource
+  }
+  /** Keep one session's roster current; returns the stop function. */
+  watchRows: (sessionId: SessionId) => () => void
+  /** Follow one session's event window for the live TPS figure; returns the stop function. */
+  watchLiveRate: (sessionId: SessionId) => () => void
+}
+
+/** Full props for the composer-dock entry (owner InputZone + standard kit + locale + jobs face). */
 export type StatusBarDockEntryProps =
-  PropsRuntime<'conversation.composer.dock'> & PropsLocale<typeof NS>
+  PropsRuntime<'conversation.composer.dock'> & PropsLocale<typeof NS> & InjectFace<StatusBarInjected>
 
 const STATUS_DOT: Record<'running' | 'idle' | 'error', string> = {
   running: '#e8b339',
@@ -41,13 +65,13 @@ function StatusDot({ state }: { state: 'running' | 'idle' | 'error' }) {
 }
 
 /**
- * Trailing-edge throttle for the live TPS figure. The host emits a
- * `statusBarLiveTokenUsage` projection update on every stream chunk —
- * potentially many times per second — so the bar would otherwise re-render
- * the segment at stream rate. This keeps the displayed value at most one
- * refresh per `intervalMs` while always converging to the latest measurement:
- * a fresh value arriving after a quiet interval shows immediately, otherwise
- * the newest value lands when the interval elapses.
+ * Trailing-edge throttle for the live TPS figure. The client-side live-rate
+ * fold publishes on every stream chunk — potentially many times per second —
+ * so the bar would otherwise re-render the segment at stream rate. This keeps
+ * the displayed value at most one refresh per `intervalMs` while always
+ * converging to the latest measurement: a fresh value arriving after a quiet
+ * interval shows immediately, otherwise the newest value lands when the
+ * interval elapses.
  */
 function useThrottled<T>(value: T, intervalMs: number): T {
   const [display, setDisplay] = useState(value)
@@ -92,27 +116,44 @@ function Segment({ view }: { view: SegmentView }) {
 
 export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: StatusBarDockEntryProps) {
   const config = useStatusBarConfig()
-  const { session, useProjection, useSessions, sessionId, t } = props
+  const {
+    useChat, useInput, useJobs, useLiveRate, useProjection, useSession, useSessions,
+    sessionId, t, watchLiveRate, watchRows,
+  } = props
 
   // Whole-log stats ride the durable projection; assemblies without the unit
   // fall back to the window fold (same field names, same display).
   const projected = useProjection('sessionStats')
   const usage = useProjection('tokenUsage')
   const pressure = useProjection('contextPressure')
-  // The live rate is emitted once per stream chunk; throttle the displayed
-  // figure to at most one refresh per 500ms. The key is this plugin's own
-  // (never shared with the dsh-web-ui family's separate `liveTokenUsage`
-  // feed), so the bar's speed is independent of which peer plugins are loaded.
-  const liveRate = useThrottled(useProjection('statusBarLiveTokenUsage')?.tokensPerSecond, 500)
+  // The live rate is folded client-side from the session's event window and
+  // re-published once per stream chunk; throttle the displayed figure to at
+  // most one refresh per 500ms. Undefined (no active stream) falls through to
+  // the window's average decode rate in the segment fold.
+  const liveRate = useThrottled(useLiveRate(view => view.tokensPerSecond), 500)
+  useEffect(() => watchLiveRate(sessionId), [sessionId, watchLiveRate])
   const sessionModelValue = useProjection('sessionModel')
   const sessionModel = sessionModelValue !== undefined && sessionModelValue.model !== null
     ? { provider: sessionModelValue.provider ?? 'unknown', model: sessionModelValue.model }
     : undefined
   const sessionUsage = useProjection('sessionUsage')
-  const jobs: readonly JobView[] | undefined = useSessions(
-    state => state.jobsBySession[sessionId],
-  )
+  // Session lifecycle facts and the settled Chat slice: 0.2.0 splits what the
+  // old ConversationSnapshot carried — `useSession` owns running/lastAgentError,
+  // the Chat target owns nodes/timings/partial, and the composer inbox owns the
+  // queue. The job roster comes from the `jobs` client service (same source as
+  // the shipped header job list), kept current by a reference-counted watcher.
+  const session = { running: useSession(state => state.running), lastAgentError: useSession(state => state.lastAgentError) }
+  const chat = useChat(state => state.legacy)
+  const queueLength = useInput(state => state.queue.length)
+  const jobs: readonly JobView[] | undefined = useJobs(state => state.rows[sessionId])
   const summary: SessionSummary | undefined = useSessions(state => state.byId[sessionId])
+
+  useEffect(() => watchRows(sessionId), [sessionId, watchRows])
+
+  // Publish the model in view for root-scoped surfaces (the Settings price
+  // book has no session scope of its own in 0.2.0).
+  const currentModelName = sessionModel?.model
+  useEffect(() => { noteCurrentModel(currentModelName) }, [currentModelName])
 
   // The sessionTime segment ticks once per second while the session runs.
   const [now, setNow] = useState(() => Date.now())
@@ -127,9 +168,9 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [truncated, setTruncated] = useState(false)
 
-  const stats = projected ?? deriveWindowStats(session)
+  const stats = projected ?? deriveWindowStats(chat)
   const views = config.enabled
-    ? buildSegments({ session, stats, usage, pressure, liveRate, sessionModel, sessionUsage, jobs, summary, now }, config, t)
+    ? buildSegments({ chat, session, queueLength, stats, usage, pressure, liveRate, sessionModel, sessionUsage, jobs, summary, now }, config, t)
     : []
   const line = views.map(view => view.text).join(' | ')
 
