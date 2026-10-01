@@ -79,13 +79,13 @@ Installing from inside the app writes to the same profile a terminal command wou
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # or pin the exact version
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
 ```
 
 ### Self-hosted Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.1
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.2
 ```
 
 ### Other sources
@@ -99,7 +99,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # A pinned release tarball — immutable and versioned (attached to every
 # GitHub release; handy when git access to the repo is awkward)
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.1/bananiceee-dsh-status-bar-0.2.1.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.2/bananiceee-dsh-status-bar-0.2.2.tgz
 ```
 
 > **Note:** pnpm 11 enforces a 24 h `minimumReleaseAge` for freshly published packages — if a same-day release is rejected, append `--config.minimumReleaseAge=0` to the `dsh plugin add` command.
@@ -116,13 +116,13 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # or re-add a pinned version (the in-app page currently has no auto-update:
 # uninstall, then install the new version)
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
 
 # github: installs — pnpm pins a ref-less `github:` dependency to the commit
 # resolved at install time, so `dsh plugin update github:...` reports
 # "Already up to date" and keeps the old build. Upgrade with a re-add:
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.2.1
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.2.2
 ```
 
 ### Disable

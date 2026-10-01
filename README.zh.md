@@ -79,13 +79,13 @@ DSH 0.2.0 移除了 `@deepseek-ai/dsh-client-runtime`，并把旧 Conversation �
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # 或钉住确切版本
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
 ```
 
 ### 自建 Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.1
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.2.2
 ```
 
 ### 其他来源
@@ -99,7 +99,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # 或安装固定版本的 release tgz —— 不可变且带版本号（随每个 GitHub
 # release 附带；适合不便直连 git 仓库的场景）
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.1/bananiceee-dsh-status-bar-0.2.1.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.2.2/bananiceee-dsh-status-bar-0.2.2.tgz
 ```
 
 > **提示：** pnpm 11 对刚发布的包强制 24 小时 `minimumReleaseAge`——若某个当天发布的版本被拒绝，在 `dsh plugin add` 命令后追加 `--config.minimumReleaseAge=0`。
@@ -116,13 +116,13 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # 或重新 add 钉住的版本（应用内页面暂不支持自动更新：
 # 请先卸载，再安装新版本）
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.2.2
 
 # github: 安装——pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到
 # 的 commit，`dsh plugin update github:...` 只会提示 "Already up to date"
 # 并保留旧构建。升级请用重新 add：
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.2.1
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.2.2
 ```
 
 ### 禁用
