@@ -9,10 +9,7 @@ import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/cli
 import type { LegacyConversationSlice } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { JobView } from '@deepseek-ai/dsh-jobs/view'
 import type { SessionStatsProjection } from '@deepseek-ai/dsh-session-stats/client'
-import type {
-  ContextPressureProjection,
-  TokenUsageProjection,
-} from '@deepseek-ai/dsh-token-meter/client'
+import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { modelConfigFor, type CostPrices, type StatusBarConfig, type SegmentId } from './config.ts'
 import { formatCost, formatDuration, formatTokens, formatTokensPerSecond } from './format.ts'
@@ -59,7 +56,6 @@ export interface SegmentSource {
   /** Whole-log projection, or the window fold when the unit is absent. */
   stats: SessionStatsProjection | null
   usage: TokenUsageProjection | undefined
-  pressure: ContextPressureProjection | undefined
   /** Live generation rate from this plugin's client-side stream fold (absent while idle). */
   liveRate: number | undefined
   /** Last model identity from the host-side sessionModel projection. */
@@ -323,7 +319,7 @@ function segmentView(
   config: StatusBarConfig,
   t: T,
 ): SegmentView | null {
-  const { chat, session, queueLength, stats, usage, pressure, liveRate, jobs, summary, now } = source
+  const { chat, session, queueLength, stats, usage, liveRate, jobs, summary, now } = source
   switch (id) {
     case 'status': {
       const running = session.running || chat.partial !== null || chat.runningCalls.length > 0
@@ -390,13 +386,6 @@ function segmentView(
       const output = usage.outputTokens
       if (input <= 0 && output <= 0) return null
       return { id, text: t('bar.tokens', { input: formatTokens(input), output: formatTokens(output) }) }
-    }
-    case 'context': {
-      if (pressure === undefined) return null
-      const used = pressure.projectedTokens ?? pressure.pressureTokens
-      if (used === undefined || pressure.contextWindow === undefined) return null
-      const percent = Math.min(100, Math.round(used / pressure.contextWindow * 100))
-      return { id, text: t('bar.context', { percent }) }
     }
     case 'tps': {
       const live = liveRate

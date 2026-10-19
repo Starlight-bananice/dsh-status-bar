@@ -1,12 +1,15 @@
 /**
- * The status bar itself: a composer-dock entry that shadows the shipped
- * `stats` cell (id 'stats', lower priority) and renders the configurable
- * segment line. Unloading the plugin restores the built-in stats line.
+ * The status bar itself: a composer-dock entry that takes over the shipped
+ * `activity` cell (id 'activity', same order 0, lower priority) and renders
+ * the configurable segment line. A second empty entry takes over the shipped
+ * `usage` cell; the native ContextMeter is hidden by CSS only while this bar
+ * renders its own context ring. Unloading the plugin or switching to the
+ * native bar restores all three.
  *
- * Layout mirrors the shipped row: block, centered, 12/20 tertiary text,
- * bounded to the composer input card's width, with the ellipsis + delayed
- * hover tooltip as the narrow-column fallback. With `wrap` enabled the bar
- * becomes a flex-wrap line that reflows inside that same width and never
+ * Layout mirrors the shipped row: centered 12/20 tertiary text bounded to the
+ * composer input card's width, with the context ring pinned to the right edge,
+ * and the ellipsis + delayed hover tooltip as the narrow-column fallback. With
+ * `wrap` enabled the text line reflows inside that same width and never
  * truncates — it never runs past the input box's edges in either mode.
  */
 
@@ -21,6 +24,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { useStatusBarConfig } from './config.ts'
 import { noteCurrentModel } from './live-model.ts'
 import { buildSegments, deriveWindowStats, type SegmentView } from './segments.ts'
+import { ContextRing } from './ContextRing.tsx'
 import { NS } from './locales.ts'
 import './projections.ts'
 
@@ -126,6 +130,7 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
   const projected = useProjection('sessionStats')
   const usage = useProjection('tokenUsage')
   const pressure = useProjection('contextPressure')
+  const breakdown = useProjection('contextBreakdown')
   // The live rate is folded client-side from the session's event window and
   // re-published once per stream chunk; throttle the displayed figure to at
   // most one refresh per 500ms. Undefined (no active stream) falls through to
@@ -157,25 +162,35 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
 
   // The sessionTime segment ticks once per second while the session runs.
   const [now, setNow] = useState(() => Date.now())
-  const wantsClock = config.enabled && config.segments.includes('sessionTime')
+  const wantsClock = config.enabled && !config.native && config.segments.includes('sessionTime')
   useEffect(() => {
     if (!wantsClock || !session.running) return
     const timer = window.setInterval(() => setNow(Date.now()), 1_000)
     return () => window.clearInterval(timer)
   }, [wantsClock, session.running])
 
-  // Single-line mode watches for ellipsis truncation to arm the hover tooltip.
-  const rootRef = useRef<HTMLDivElement | null>(null)
+  // The text line owns the truncation measurement; the ring is a separate
+  // flex item so it stays visible even when the line elides.
+  const lineRef = useRef<HTMLDivElement | null>(null)
   const [truncated, setTruncated] = useState(false)
 
   const stats = projected ?? deriveWindowStats(chat)
-  const views = config.enabled
-    ? buildSegments({ chat, session, queueLength, stats, usage, pressure, liveRate, sessionModel, sessionUsage, jobs, summary, now }, config, t)
-    : []
+  const views = (config.enabled && !config.native
+    ? buildSegments({ chat, session, queueLength, stats, usage, liveRate, sessionModel, sessionUsage, jobs, summary, now }, config, t)
+    : []).filter(view => view.id !== 'context')
   const line = views.map(view => view.text).join(' | ')
+  // The context segment is pinned to the right as the shipped-style ring.
+  // While it renders, the CSS rule hides the native ContextMeter; turning the
+  // segment off removes the ring and lets the native meter return.
+  const contextUsed = pressure?.projectedTokens ?? pressure?.pressureTokens
+  const hasRing = config.enabled
+    && !config.native
+    && config.segments.includes('context')
+    && contextUsed !== undefined
+    && pressure?.contextWindow !== undefined
 
   useLayoutEffect(() => {
-    const el = rootRef.current
+    const el = lineRef.current
     if (el === null) return
     const measure = () => { setTruncated(el.scrollWidth > el.clientWidth) }
     measure()
@@ -183,32 +198,50 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     return () => { observer.disconnect() }
-  }, [line, config.wrap, config.enabled])
+  }, [line, config.wrap, config.enabled, config.native, hasRing])
 
-  if (!config.enabled || views.length === 0) return null
+  if (!config.enabled || config.native || (views.length === 0 && !hasRing)) return null
 
   if (config.wrap) {
     return (
-      <div ref={rootRef} className="dsb-bar dsb-wrap">
-        {views.map((view, i) => (
-          <Fragment key={view.id}>
-            <Segment view={view} />
-            {i < views.length - 1 && <span className="dsb-sep" aria-hidden>|</span>}
-          </Fragment>
-        ))}
+      <div
+        className="dsb-bar dsb-wrap"
+        data-composer-stat="activity"
+        data-dsb-context={hasRing ? 'true' : undefined}
+      >
+        {views.length > 0 && (
+          <div ref={lineRef} className="dsb-line">
+            {views.map((view, i) => (
+              <Fragment key={view.id}>
+                <Segment view={view} />
+                {i < views.length - 1 && <span className="dsb-sep" aria-hidden>|</span>}
+              </Fragment>
+            ))}
+          </div>
+        )}
+        {hasRing && <ContextRing pressure={pressure} breakdown={breakdown} t={t} />}
       </div>
     )
   }
   return (
-    <Tooltip label={line} side="top" delayMs={500} disabled={!truncated}>
-      <div ref={rootRef} className="dsb-bar">
-        {views.map((view, i) => (
-          <Fragment key={view.id}>
-            {i > 0 && <span className="dsb-sep" aria-hidden>|</span>}
-            <Segment view={view} />
-          </Fragment>
-        ))}
-      </div>
-    </Tooltip>
+    <div
+      className="dsb-bar"
+      data-composer-stat="activity"
+      data-dsb-context={hasRing ? 'true' : undefined}
+    >
+      {views.length > 0 && (
+        <Tooltip label={line} side="top" delayMs={500} disabled={!truncated}>
+          <div ref={lineRef} className="dsb-line">
+            {views.map((view, i) => (
+              <Fragment key={view.id}>
+                {i > 0 && <span className="dsb-sep" aria-hidden>|</span>}
+                <Segment view={view} />
+              </Fragment>
+            ))}
+          </div>
+        </Tooltip>
+      )}
+      {hasRing && <ContextRing pressure={pressure} breakdown={breakdown} t={t} />}
+    </div>
   )
 })

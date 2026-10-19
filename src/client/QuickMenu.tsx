@@ -1,8 +1,9 @@
 /**
  * Quick-toggle menu: a small gear button at the right end of the composer
- * tool row (`conversation.input.right`) that flips the master switch and
- * individual segments without opening Settings. Shares the same config store
- * as the bar and the settings page, so every surface stays in sync live.
+ * tool row (`conversation.input.right`) that switches to the native bar or
+ * flips the plugin master switch and individual segments without opening
+ * Settings. Shares the same config store as the bar and the settings page, so
+ * every surface stays in sync live.
  */
 
 import { memo, useRef, useState } from 'react'
@@ -15,6 +16,7 @@ export type QuickMenuEntryProps =
   PropsRuntime<'conversation.input.right'> & PropsLocale<typeof NS>
 
 const MASTER_ID = 'dsb-master'
+const NATIVE_ID = 'dsb-native'
 const RESET_ID = 'dsb-reset'
 
 export const QuickMenuEntry = memo(function QuickMenuEntry(props: QuickMenuEntryProps) {
@@ -25,6 +27,7 @@ export const QuickMenuEntry = memo(function QuickMenuEntry(props: QuickMenuEntry
 
   const items: MenuEntry[] = [
     { id: MASTER_ID, label: t('quick.master') },
+    { id: NATIVE_ID, label: t('quick.native') },
     { type: 'separator', id: 'dsb-sep-1' },
     ...SEGMENT_IDS.map(id => ({
       id,
@@ -34,14 +37,21 @@ export const QuickMenuEntry = memo(function QuickMenuEntry(props: QuickMenuEntry
     { id: RESET_ID, label: t('quick.reset') },
   ]
 
+  // One mode is active at a time: native wins over the plugin master switch.
   const selectedIds = [
-    ...(config.enabled ? [MASTER_ID] : []),
+    ...(config.native ? [NATIVE_ID] : config.enabled ? [MASTER_ID] : []),
     ...config.segments,
   ]
 
   const onSelect = (id: string): void => {
-    if (id === MASTER_ID) {
-      updateConfig({ enabled: !config.enabled })
+    if (id === NATIVE_ID) {
+      updateConfig({ native: !config.native })
+    } else if (id === MASTER_ID) {
+      // While native is active, choosing the plugin bar both leaves native
+      // mode and turns the plugin bar on.
+      updateConfig(config.native
+        ? { native: false, enabled: true }
+        : { enabled: !config.enabled })
     } else if (id === RESET_ID) {
       resetConfig()
     } else if ((SEGMENT_IDS as readonly string[]).includes(id)) {

@@ -1,10 +1,10 @@
 # dsh-status-bar · 一眼看清你的 agent 正在做什么
 
-> **✅ 已适配 DSH 桌面版 —— DSH `0.2.0-rc.2`。**
+> **✅ 已适配 DSH 桌面版 —— DSH `0.2.1-rc.2`。**
 > **`0.2.x` 版本线面向桌面版运行时：请把它安装到 `desktop` profile（应用内「插件」页，或 `dsh plugin --profile desktop add …`）。**
-> **已停止维护的 `0.1.x` 版本线面向旧的 `0.1.x` 运行时，无法在 0.2.0 桌面版上加载。**
+> **已停止维护的 `0.1.x` 版本线面向旧的 `0.1.x` 运行时，无法在 0.2.x 桌面版上加载。**
 
-[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -18,15 +18,16 @@
 
 **核心能力：**
 
-- **桌面版原生，而非外挂** —— **针对 DSH 0.2.0 桌面版运行时重建**（`@deepseek-ai/dsh-*@0.2.0-rc.2`）：会话事实来自桌面版自身的 Chat / 会话 / 输入框服务，后台任务来自其任务服务，实时吞吐数字来自其自身的流式事件窗口。没有兼容垫片，也不保留旧版兼容路径。
-- **接近原生体验，且完全由你掌控** —— 16 个可开关、可排序的信息段：状态点、模型、标题、工作区、轮次与步数、模型/工具耗时、TTFT 与解码速度、缓存命中率、Token、上下文占用、实时 TPS、会话时长、费用估算、任务、队列、错误
+- **桌面版原生，而非外挂** —— **针对 DSH 0.2 桌面版运行时重建**（`@deepseek-ai/dsh-*@0.2.0-rc.2`）：会话事实来自桌面版自身的 Chat / 会话 / 输入框服务，后台任务来自其任务服务，实时吞吐数字来自其自身的流式事件窗口。没有兼容垫片，也不保留旧版兼容路径。
+- **接近原生体验，且完全由你掌控** —— 16 个可开关的信息段（上下文圆环固定在底栏右侧，其余 15 个可排序）：状态点、模型、标题、工作区、轮次与步数、模型/工具耗时、TTFT 与解码速度、缓存命中率、Token、上下文占用、实时 TPS、会话时长、费用估算、任务、队列、错误
 - **实时吞吐（TPS）** —— 底栏在浏览器内直接折叠本会话自己的实时流，流式生成期间速度随分块逐块刷新，无论流以多细的粒度送达都能反映真实生成速率；无需轮询、无需 host 往返，也无需外部 live-stats 插件
 - **费用估算 + 用户维护的模型价格手册** —— 每个模型独立的价格与峰/谷时段，**每条消息/每一步都按实际产出它的模型计价**（输入、缓存命中、缓存写入、输出四类分别按该步发生时刻取价）；「用量与费用」弹窗内置堆叠费用趋势图（日 / 周 / 月）、分页的逐步用量历史（含独立的缓存命中列）与总成本展示
 - **跟得上 DeepSeek 反复调整的峰谷规则** —— 不再是把时段写死成一组 `HH:MM`：改为「工作日 / 周末 / 法定节假日」三类日判定，节假日与调休日历一键拉取并缓存在本地、可手动增删例外日期；DeepSeek 之后无论是改时段、改周末规则、还是新增节假日与调休安排，你只需刷新一次日历或改一个时段，不必重配整个价格表
 - **零配置开箱即用** —— 13 个信息段默认开启，其余勾选即得
 - **多项实用选项** —— 多行换行显示（内容再多也不会被截断省略）、逐模型费用估算（支持峰谷计价）、币种切换（CNY / USD）、齿轮快捷开关菜单，以及带一键重置的专属设置页
+- **官方上下文圆环内置** —— 把输入框原生的上下文圆环做进底栏：由 `contextPressure` 驱动的右侧圆环 + 百分比，以及原生的点击展开面板（系统提示词 / 工具 / 对话构成，来自 `contextBreakdown`）。关闭上下文段即可把圆环交还给 DSH 原生组件
 - **24 小时制时段输入** —— 峰谷时段用 24 小时制文本框（`09:00`），不再受浏览器区域设置影响显示成 AM/PM
-- **干净的接管机制** —— 插件底栏以低优先级遮蔽内置 `stats` 单元格：加载期间由其渲染，卸载后内置统计行原样恢复
+- **干净的接管机制，可随时切回原生** —— 插件底栏以低优先级接管内置的两个输入框统计条目（`activity` 与 `usage`）：加载期间由其渲染，卸载后两个内置控件原样恢复。设置页与齿轮菜单里的**使用原生底栏**开关会立即释放两个接管，无需重启即可恢复 DSH 自带底栏与上下文圆环。插件内置的圆环会替代原生圆环；关闭上下文段或切回原生模式时，原生圆环保留
 - **双语界面** —— 客户端文案内置英文与中文，遵循 DSH locale 体系
 
 ## Screenshots（界面预览）
@@ -45,8 +46,8 @@
 
 | 项目 | 说明 |
 |---|---|
-| **DSH 桌面版** | **`0.2.0-rc.2`——本版本线适配的目标；最后验证于 2026-10-01** |
-| **插件版本线** | **`0.2.x` 面向桌面版运行时。`0.1.x` 面向已停止维护的 `0.1.x` 运行时，无法在 0.2.0 桌面版上加载。** |
+| **DSH 桌面版** | **`0.2.1-rc.2`——本版本线适配的目标；最后验证于 2026-10-19** |
+| **插件版本线** | **`0.2.x` 面向桌面版运行时。`0.1.x` 面向已停止维护的 `0.1.x` 运行时，无法在 0.2.x 桌面版上加载。** |
 | DSH profile | 打包桌面应用使用 `desktop` · 自建 `dsh web` 使用 `web` · CLI 运行时使用 `headless` |
 | 运行环境 | Node ≥ 22（host）+ 现代浏览器（client）；无外部服务依赖 |
 | 共存关系 | 与任何其他状态栏/TPS 插件互不干扰：实时速率在客户端折叠本会话自己的事件窗口，因此本插件**不注册任何共享投影键**——任何对等插件的键名、`stateVersion` 或注册先后都无法顶掉底栏的 TPS |
@@ -60,6 +61,10 @@ DSH 0.2.0 移除了 `@deepseek-ai/dsh-client-runtime`，并把旧 Conversation �
 - **实时 TPS 移入浏览器。** 0.2.0 不再有持久化的 `assistant/chunk` 事件，原先提供速率的 host 投影不再收到输入。底栏改为在客户端折叠本会话自己的实时流——估算器不变，测速改用滑动窗口，不再依赖流的送达粒度。
 - **`agent preset` 段已下线**（`SessionSummary.agentPreset` 不再存在；0.2.0 仅把预设暴露给新会话的 Hero 芯片）。该段本来就是默认关闭；已保存的配置中若仍列有它，会在加载时被过滤掉。
 - **构建不再需要 DSH 源码检出。** 插件编译所依赖的 DSH 包以 `0.2.0-rc.2` 精确钉为 devDependencies；`pnpm install && pnpm run build` 就是全部。
+
+### 0.2.1 改了什么
+
+DSH 0.2.1 把输入框统计拆成了两个 `conversation.composer.dock` 条目——`activity`（order 0）与 `usage`（order 1）。原来单一的 `stats` id 不再能替换任何内置条目，于是底栏与内置胶囊并排重复渲染。本版本同时接管两个 id，并把原生风格的上下文圆环直接渲染在底栏右侧；圆环显示期间隐藏原生组件。
 
 ## Install（安装）
 
@@ -81,13 +86,13 @@ DSH 0.2.0 移除了 `@deepseek-ai/dsh-client-runtime`，并把旧 Conversation �
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # 或钉住确切版本
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
 ```
 
 ### 自建 Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.0
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.1
 ```
 
 ### 其他来源
@@ -101,7 +106,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # 或安装固定版本的 release tgz —— 不可变且带版本号（随每个 GitHub
 # release 附带；适合不便直连 git 仓库的场景）
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.0/bananiceee-dsh-status-bar-0.3.0.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.1/bananiceee-dsh-status-bar-0.3.1.tgz
 ```
 
 > **提示：** pnpm 11 对刚发布的包强制 24 小时 `minimumReleaseAge`——若某个当天发布的版本被拒绝，在 `dsh plugin add` 命令后追加 `--config.minimumReleaseAge=0`。
@@ -118,18 +123,19 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # 或重新 add 钉住的版本（应用内页面暂不支持自动更新：
 # 请先卸载，再安装新版本）
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
 
 # github: 安装——pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到
 # 的 commit，`dsh plugin update github:...` 只会提示 "Already up to date"
 # 并保留旧构建。升级请用重新 add：
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.0
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.1
 ```
 
 ### 禁用
 
-- **只隐藏底栏** —— 客户端总开关（设置 → 状态栏，或输入栏的齿轮菜单）可立即关闭底栏；host 侧投影与用量账本仍在继续运行。
+- **切换回原生底栏** —— 在 设置 → 状态栏 或输入栏齿轮菜单中勾选**使用原生底栏**，插件会立即释放两个 dock 条目，恢复 DSH 自带底栏（含上下文圆环）；取消勾选即可切回插件底栏。
+- **只隐藏插件底栏** —— 客户端总开关（设置 → 状态栏，或输入栏的齿轮菜单）可立即关闭插件底栏；host 侧投影与用量账本仍在继续运行。
 - **完全停止插件** —— 在应用内「插件」页面禁用它（或从 profile 的 `bundles` 列表中移除）；重新启用即可恢复。
 
 ### 卸载
@@ -138,13 +144,13 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.0
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 ```
 
-卸载后内置统计行自动恢复（遮蔽单元格被释放）。**数据残留说明：** 浏览器 `localStorage`（`dsh.statusBar.v1`）与 host 侧用量文件（见 [权限与数据](#permissions--data权限与数据)）不会自动删除——需要彻底清除时请手动删除。
+卸载后内置的 activity 与 usage 统计控件自动恢复（两个遮蔽单元格均被释放）。**数据残留说明：** 浏览器 `localStorage`（`dsh.statusBar.v1`）与 host 侧用量文件（见 [权限与数据](#permissions--data权限与数据)）不会自动删除——需要彻底清除时请手动删除。
 
 ## Quick start（快速上手）
 
 1. 先按上文安装；若安装程序要求，重启应用。
 2. 开始一个会话——底栏默认显示：状态 · 模型 · 轮次 · 耗时 · 速度 · 缓存命中 · Token · 上下文 · TPS · 会话时长 · 任务 · 队列 · 错误。
-3. 打开 **设置 → 状态栏**（设置导航中独立的分区，名称为 `Status Bar`），开关/排序信息段、开启换行，或一键重置。
+3. 打开 **设置 → 状态栏**（设置导航中独立的分区，名称为 `Status Bar`），开关/排序信息段、开启换行、切换原生底栏，或一键重置。
 4. 想要费用估算？把你在用的模型加入**模型价格手册**：
 
    ```sh
@@ -179,7 +185,7 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 
 **环境变量：** `DSH_HOME`（host 侧）——插件本地数据的基准目录（默认 `~/.dsh`）。无其他环境变量，无密钥，无 Token。
 
-**信息段速查**（全部 16 个，均可开关、排序）：
+**信息段速查**（全部 16 个均可开关；上下文圆环固定在右侧，其余可排序）：
 
 | 段 | 内容 | 数据源 |
 |---|---|---|
@@ -192,7 +198,7 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 | TTFT 与解码 | 平均首 Token · tok/s | `sessionStats` |
 | 缓存命中 | 提示词缓存命中占比（两位小数，上限 99.99%） | `tokenUsage` |
 | Token | 计费输入/输出总量 | `tokenUsage` |
-| 上下文 | 上下文窗口占用 % | `contextPressure` |
+| 上下文圆环 | 右侧圆环 + 点击展开构成面板 | `contextPressure`、`contextBreakdown` |
 | 实时 TPS | 当前生成速率（默认开启） | 客户端折叠会话事件窗口（`assistant/live-chunk`）；分块感知的 token 估算（约 4 字符/token + 块/角色框架开销，`block-end` 时按整块重新计价），在 1.5 秒滑动窗口内测速，因此该数值不受流的送达粒度影响；provider 上报的精确用量到达后切换为上报速率，会话未在生成时显示 0 |
 | 会话时长 | 挂钟时间，运行时走动 | chat `turnTimings` |
 | 费用估算 | ≈¥0.0123（默认关闭） | `sessionUsage` 投影——每个模型的用量 × 其自身生效价格；峰谷由「工作日/周末/节假日 + 时段」规则在该步发生时刻判定，跨模型求和 |
@@ -213,8 +219,8 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 
 | 现象 | 原因与处理 |
 |---|---|
-| 底栏不显示 | 总开关被关闭 → 在 设置 → 状态栏 或齿轮菜单中开启。`localStorage` 被清空？配置会重置为默认值。全新安装后请重启一次应用。 |
-| 从 0.1.x 升级后什么都加载不出来 | 属于预期现象——`0.1.x` 版本线无法在 0.2.0 桌面版上运行。先卸载它，再把 `0.2.x` 安装到 `desktop` profile。 |
+| 底栏不显示 | 总开关被关闭，或当前处于原生底栏模式 → 在 设置 → 状态栏 或齿轮菜单中启用插件底栏 / 取消勾选**使用原生底栏**。`localStorage` 被清空？配置会重置为默认值。全新安装后请重启一次应用。 |
+| 从 0.1.x 升级后什么都加载不出来 | 属于预期现象——`0.1.x` 版本线无法在 0.2.x 桌面版上运行。先卸载它，再把 `0.2.x` 安装到 `desktop` profile。 |
 | TPS 段为 0 / 空白 | 本会话尚未开始流式输出，或流已经结束（没有活跃生成时按设计显示 0）。每次重试都会重启测量窗口。 |
 | TPS 与其他插件冲突 | 设计上不存在——本插件**不注册任何共享投影键**。实时速率在客户端折叠本会话自己的事件窗口，因此其他状态栏/TPS 插件无法顶掉或遮蔽它。 |
 | 费用估算缺失 | 会话所用的模型都不在价格手册中（或价格全为 0）→ 在 设置 → 状态栏 → 模型价格手册 中添加。费用按手册费率估算（逐模型、平峰或峰谷），并非 provider 账单。 |
@@ -226,7 +232,7 @@ dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 
 **日志：** 插件自身不写任何日志文件——host 侧诊断信息出现在 DSH host 进程输出中，客户端问题见浏览器 devtools 控制台。
 
-**回滚：** 设置页提供一键**重置**（恢复全部默认值）。插件本体：卸载 → 用 `dsh plugin --profile desktop add <pkg>@<version>` 重新添加旧版本；移除插件后内置统计行始终自动恢复。
+**回滚：** 设置页提供一键**重置**（恢复全部默认值）。插件本体：卸载 → 用 `dsh plugin --profile desktop add <pkg>@<version>` 重新添加旧版本；移除插件后内置统计控件始终自动恢复。
 
 ## Development（开发）
 

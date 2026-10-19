@@ -1,12 +1,15 @@
 /**
- * The status bar itself: a composer-dock entry that shadows the shipped
- * `stats` cell (id 'stats', lower priority) and renders the configurable
- * segment line. Unloading the plugin restores the built-in stats line.
+ * The status bar itself: a composer-dock entry that takes over the shipped
+ * `activity` cell (id 'activity', same order 0, lower priority) and renders
+ * the configurable segment line. A second empty entry takes over the shipped
+ * `usage` cell; the native ContextMeter is hidden by CSS only while this bar
+ * renders its own context ring. Unloading the plugin or switching to the
+ * native bar restores all three.
  *
- * Layout mirrors the shipped row: block, centered, 12/20 tertiary text,
- * bounded to the composer input card's width, with the ellipsis + delayed
- * hover tooltip as the narrow-column fallback. With `wrap` enabled the bar
- * becomes a flex-wrap line that reflows inside that same width and never
+ * Layout mirrors the shipped row: centered 12/20 tertiary text bounded to the
+ * composer input card's width, with the context ring pinned to the right edge,
+ * and the ellipsis + delayed hover tooltip as the narrow-column fallback. With
+ * `wrap` enabled the text line reflows inside that same width and never
  * truncates — it never runs past the input box's edges in either mode.
  */
 import type { IJobs } from '@deepseek-ai/dsh-api-job-controller/client';

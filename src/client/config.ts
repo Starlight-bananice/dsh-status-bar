@@ -26,8 +26,8 @@ export type {
 } from './pricing-types.ts'
 
 export const STORAGE_KEY = 'dsh.statusBar.v1'
-/** Current persisted schema version; v2 added the day-type pricing rules. */
-export const CONFIG_VERSION = 2
+/** Current persisted schema version; v2 added day-type pricing, v3 the native-bar switch. */
+export const CONFIG_VERSION = 3
 
 /** Every segment the bar can render, in stable registry order. */
 export const SEGMENT_IDS = [
@@ -133,7 +133,13 @@ export interface CalendarConfig {
 export interface StatusBarConfig {
   /** Persisted schema version (see {@link CONFIG_VERSION}). */
   version: number
-  /** Master switch: false hides the bar entirely. */
+  /**
+   * Render DSH's built-in composer statistics instead of this plugin's bar.
+   * The plugin releases its `activity`/`usage` dock takeovers while true, so
+   * the native bar (and its context meter) returns immediately.
+   */
+  native: boolean
+  /** Master switch: false hides the plugin bar entirely (native mode wins). */
   enabled: boolean
   /** Allow the bar to wrap onto multiple lines instead of eliding. */
   wrap: boolean
@@ -146,6 +152,7 @@ export interface StatusBarConfig {
 
 export const DEFAULT_CONFIG: StatusBarConfig = {
   version: CONFIG_VERSION,
+  native: false,
   enabled: true,
   wrap: true,
   segments: SEGMENT_IDS.filter(id => SEGMENT_META[id].defaultOn),
@@ -295,6 +302,7 @@ function load(): StatusBarConfig {
     }
     return {
       version: CONFIG_VERSION,
+      native: parsed.native === true,
       enabled: parsed.enabled !== false,
       wrap: parsed.wrap === true,
       segments: segments.length > 0 ? segments : DEFAULT_CONFIG.segments,

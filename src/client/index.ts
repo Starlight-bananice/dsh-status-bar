@@ -1,8 +1,10 @@
 /**
  * dsh-status-bar client entry: installs the bar's stylesheet and locale, then
  * registers three surfaces —
- *  1. `conversation.composer.dock` id 'stats' at a LOWER priority: shadows the
- *     shipped stats line while this plugin is live (restores on unload).
+ *  1. `conversation.composer.dock` ids 'activity' (this bar) and 'usage' (an
+ *     empty replacement) at a LOWER priority: shadows the two shipped stats
+ *     pills while this plugin is live (restores on unload). DSH 0.2.1 split the
+ *     old single 'stats' cell into those two entries.
  *  2. `conversation.input.right`: the quick-toggle gear menu.
  *  3. `settings.section`: the management page.
  */
@@ -11,6 +13,7 @@ import type { IJobs } from '@deepseek-ai/dsh-api-job-controller/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { en, NS, zh } from './locales.ts'
+import { getConfig, subscribeConfig } from './config.ts'
 import { LiveRateStore } from './live-rate.ts'
 import { StatusBarDockEntry } from './StatusBar.tsx'
 import { QuickMenuEntry } from './QuickMenu.tsx'
@@ -47,14 +50,16 @@ type ClientContext = {
 /** Bar + manager styles. Class names are prefixed `dsb-` to stay collision-free. */
 const STYLES = `
 .dsb-bar {
-  display: block;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   /* Bound to the composer input card so the bar never runs past the input
-     box's edges: single-line mode elides within this cap, wrap mode (below)
-     reflows inside it. The composer context provides
-     --dsh-composer-card-max-width; the fallback only serves the settings
-     preview, whose own box is narrower than 780px anyway. */
+     box's edges: the text line elides or wraps inside this cap while the
+     context ring stays pinned to its right edge. The composer context
+     provides --dsh-composer-card-max-width; the fallback only serves the
+     settings preview, whose own box is narrower than 780px anyway. */
   max-width: var(--dsh-composer-card-max-width, 780px);
   margin: 0 auto;
   box-sizing: border-box;
@@ -62,12 +67,17 @@ const STYLES = `
   font-size: 12px;
   line-height: 20px;
   color: var(--dsw-alias-label-tertiary, #9aa0aa);
+  font-variant-numeric: tabular-nums;
+}
+.dsb-line {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
 }
-.dsb-bar.dsb-wrap {
+.dsb-bar.dsb-wrap .dsb-line {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -76,6 +86,151 @@ const STYLES = `
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
+}
+/* The native ContextMeter is a SIBLING of the composer.dock slot, not a slot
+   entry. Hide it only while this bar renders its own ring (data-dsb-context);
+   turning the context segment off releases the bar and the native meter
+   returns. The last two selectors are the depth-independent fallback; they
+   must exclude this plugin's own ring trigger, which reuses the same
+   localized aria-label. */
+[data-composer-dock]:has(.dsb-bar[data-dsb-context]) > span:has(button[aria-label^="上下文已用"]),
+[data-composer-dock]:has(.dsb-bar[data-dsb-context]) > span:has(button[aria-label$="of context used"]),
+[data-composer-dock]:has(.dsb-bar[data-dsb-context]) button[aria-label^="上下文已用"]:not(.dsb-ctx-trigger),
+[data-composer-dock]:has(.dsb-bar[data-dsb-context]) button[aria-label$="of context used"]:not(.dsb-ctx-trigger) {
+  display: none !important;
+}
+/* Context ring, ported from the shipped ContextMeter (DSH 0.2.1). */
+.dsb-ring {
+  flex: none;
+  display: inline-flex;
+}
+.dsb-ctx-trigger,
+.dsb-ctx-static {
+  border-radius: var(--dsw-radius-sm);
+  color: var(--dsw-alias-label-tertiary);
+  font-family: inherit;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-variant-numeric: tabular-nums;
+  line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
+  white-space: nowrap;
+  cursor: pointer;
+  background: 0 0;
+  border: none;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  display: inline-flex;
+}
+.dsb-ctx-trigger:hover,
+.dsb-ctx-trigger[aria-expanded="true"] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+.dsb-ctx-static {
+  cursor: default;
+}
+.dsb-ctx-track {
+  fill: none;
+  stroke: var(--dsw-alias-border-l3);
+  stroke-width: 2px;
+}
+.dsb-ctx-fill {
+  fill: none;
+  stroke: var(--dsw-alias-label-tertiary);
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+.dsb-ctx-panel {
+  z-index: 1100;
+  box-sizing: border-box;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-specific-menu);
+  width: min(264px, 100vw - 24px);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  color: var(--dsw-alias-label-secondary);
+  cursor: default;
+  border: 0;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 20px;
+  position: fixed;
+}
+.dsb-ctx-header {
+  align-items: center;
+  gap: 6px;
+  display: flex;
+}
+.dsb-ctx-figures {
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+  margin-left: auto;
+  font-weight: 500;
+}
+.dsb-ctx-percent {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+.dsb-ctx-headline {
+  color: var(--dsw-alias-label-tertiary);
+}
+.dsb-ctx-headline:empty {
+  display: none;
+}
+.dsb-ctx-bar {
+  corner-shape: round;
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-radius: 999px;
+  gap: 1px;
+  height: 4px;
+  margin: 10px 0 12px;
+  display: flex;
+  overflow: hidden;
+}
+.dsb-ctx-segment {
+  background: var(--meter-tint, var(--dsw-alias-label-tertiary));
+  border-radius: 1px;
+  flex: none;
+  min-width: 2px;
+  height: 100%;
+}
+.dsb-ctx-swatch {
+  background: var(--meter-tint);
+  vertical-align: baseline;
+  border-radius: 2px;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  display: inline-block;
+}
+.dsb-ctx-color-system {
+  --meter-tint: var(--dsw-static-neutral-bluish-400);
+}
+.dsb-ctx-color-tools {
+  --meter-tint: #a78bfa;
+}
+.dsb-ctx-color-messages {
+  --meter-tint: var(--dsw-static-blue-450);
+}
+.dsb-ctx-rows {
+  margin: 6px 0 0;
+}
+.dsb-ctx-row {
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0;
+  display: flex;
+}
+.dsb-ctx-row dt {
+  color: var(--dsw-alias-label-secondary);
+}
+.dsb-ctx-row dd {
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+  margin: 0;
 }
 .dsb-sep {
   color: var(--dsw-alias-border-l3, rgba(0, 0, 0, 0.25));
@@ -855,13 +1010,28 @@ function installStyles(): () => void {
 /** Client services required by this plugin. */
 export const inject = ['slots', 'locale', 'jobs', 'sessions']
 
+/**
+ * Replacement for the shipped `usage` pill. DSH 0.2.1 splits composer stats
+ * into `activity` (counts/speed) and `usage` (tokens/cache); the bar already
+ * renders those figures, so its usage entry only needs to hold the cell and
+ * render nothing. Returning null keeps the lower-priority entry active while
+ * leaving no second line behind.
+ */
+function SuppressedUsageDockEntry(): null {
+  return null
+}
+
 /** Register the bar, the quick menu, and the management page. */
 export function apply(ctx: ClientContext): void {
   ctx.effect(installStyles, 'dsh-status-bar: styles')
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-status-bar: locale')
 
-  // The bar shadows the shipped `stats` cell: same id, lower priority, so it
-  // renders while this plugin is live and the built-in line returns on unload.
+  // DSH 0.2.1 replaced the single shipped `stats` cell with two dock entries:
+  // `activity` (order 0, turn/step counts + speed) and `usage` (order 1, token
+  // total + cache hit). Reuse both ids at their original orders and a lower
+  // priority: the bar takes over `activity`, the empty entry takes over
+  // `usage`, and unloading restores both built-ins. A new id would add a
+  // third control and render the stats twice.
   // The jobs segment rides the `jobs` client service (the same roster source
   // the shipped session-header job list uses): the `hooks` compartment becomes
   // the component's `useJobs` selector hook, and `watchRows` opens this
@@ -872,18 +1042,53 @@ export function apply(ctx: ClientContext): void {
   // opens the watch while it is mounted.
   const liveRate = new LiveRateStore()
   ctx.effect(() => () => { liveRate.reset() }, 'dsh-status-bar: live rate teardown')
-  ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
-    name: 'conversation.composer.dock',
-    id: 'stats',
-    priority: -1,
-    order: 0,
-    locale: NS,
-    inject: () => ({
-      hooks: { jobs: ctx.jobs.state, liveRate },
-      watchRows: (sessionId: SessionId) => ctx.jobs.watchRows(sessionId),
-      watchLiveRate: (sessionId: SessionId) => liveRate.watch(ctx.sessions, sessionId),
-    }),
-  }, StatusBarDockEntry))
+
+  // The composer-dock takeover is a runtime mode, not a mount-time decision:
+  // switching to the native bar releases both entries so DSH's own activity /
+  // usage controls and context meter render again. The gear menu and settings
+  // page stay registered in either mode, so this switch is always reachable.
+  let offDock: (() => void) | undefined
+  const syncDock = (): void => {
+    if (getConfig().native) {
+      offDock?.()
+      offDock = undefined
+      return
+    }
+    if (offDock !== undefined) return
+    offDock = ctx.slots.inject('conversation.composer.dock', () => {
+      const offBar = ctx.slots.register({
+        name: 'conversation.composer.dock',
+        id: 'activity',
+        priority: -1,
+        order: 0,
+        locale: NS,
+        inject: () => ({
+          hooks: { jobs: ctx.jobs.state, liveRate },
+          watchRows: (sessionId: SessionId) => ctx.jobs.watchRows(sessionId),
+          watchLiveRate: (sessionId: SessionId) => liveRate.watch(ctx.sessions, sessionId),
+        }),
+      }, StatusBarDockEntry)
+      const offUsage = ctx.slots.register({
+        name: 'conversation.composer.dock',
+        id: 'usage',
+        priority: -1,
+        order: 1,
+      }, SuppressedUsageDockEntry)
+      return () => {
+        offUsage()
+        offBar()
+      }
+    })
+  }
+  syncDock()
+  ctx.effect(() => {
+    const offConfig = subscribeConfig(syncDock)
+    return () => {
+      offConfig()
+      offDock?.()
+      offDock = undefined
+    }
+  }, 'dsh-status-bar: native bar switch')
   // Quick-toggle gear at the right end of the composer tool row, next to it
   // the usage & cost dialog button.
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'status-bar-quick', order: 950, locale: NS }, QuickMenuEntry))

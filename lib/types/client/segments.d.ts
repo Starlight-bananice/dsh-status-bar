@@ -8,7 +8,7 @@ import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/cli
 import type { LegacyConversationSlice } from '@deepseek-ai/dsh-client-ui-chat/client';
 import type { JobView } from '@deepseek-ai/dsh-jobs/view';
 import type { SessionStatsProjection } from '@deepseek-ai/dsh-session-stats/client';
-import type { ContextPressureProjection, TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client';
+import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import { type CostPrices, type StatusBarConfig, type SegmentId } from './config.ts';
 import type { NS } from './locales.ts';
@@ -40,7 +40,6 @@ export interface SegmentSource {
     /** Whole-log projection, or the window fold when the unit is absent. */
     stats: SessionStatsProjection | null;
     usage: TokenUsageProjection | undefined;
-    pressure: ContextPressureProjection | undefined;
     /** Live generation rate from this plugin's client-side stream fold (absent while idle). */
     liveRate: number | undefined;
     /** Last model identity from the host-side sessionModel projection. */

@@ -1,10 +1,10 @@
 # dsh-status-bar · Know what your agent is doing — at a glance
 
-> **✅ Adapted to the DSH desktop app — DSH `0.2.0-rc.2`.**
+> **✅ Adapted to the DSH desktop app — DSH `0.2.1-rc.2`.**
 > **The `0.2.x` line is built for the desktop runtime: install it into the `desktop` profile (in-app **Plugins** page, or `dsh plugin --profile desktop add …`).**
-> **The retired `0.1.x` line targets the old `0.1.x` runtime and will NOT load on the 0.2.0 desktop.**
+> **The retired `0.1.x` line targets the old `0.1.x` runtime and will NOT load on the 0.2.x desktop.**
 
-[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -18,15 +18,16 @@
 
 **What it does:**
 
-- **Desktop-native, not bolted on** — **rebuilt against the DSH 0.2.0 desktop runtime** (`@deepseek-ai/dsh-*@0.2.0-rc.2`): session facts come from the desktop's own Chat / session / composer services, background jobs from its job service, and the live throughput figure from its own streaming event window. No shims, no legacy compatibility path.
-- **Near-native experience, fully yours** — 16 toggleable, reorderable segments: status dot, model, title, workspace, turns & steps, model/tool time, TTFT & decode speed, cache-hit rate, tokens, context pressure, live TPS, session time, cost estimate, jobs, queue, errors
+- **Desktop-native, not bolted on** — **rebuilt against the DSH 0.2 desktop runtime** (`@deepseek-ai/dsh-*@0.2.0-rc.2`): session facts come from the desktop's own Chat / session / composer services, background jobs from its job service, and the live throughput figure from its own streaming event window. No shims, no legacy compatibility path.
+- **Near-native experience, fully yours** — 16 toggleable segments (the context ring is pinned to the right; the other 15 are reorderable): status dot, model, title, workspace, turns & steps, model/tool time, TTFT & decode speed, cache-hit rate, tokens, context pressure, live TPS, session time, cost estimate, jobs, queue, errors
 - **Live throughput (TPS)** — the bar folds this session's own live stream in the browser, so the speed updates chunk by chunk while streaming and tracks the real generation rate regardless of how finely the stream is delivered; no polling, no host round-trip, no external live-stats plugin
 - **Cost estimation with a user-maintained model price book** — per-model rates, per-model peak/off-peak schedules, **each message/step priced with the model that actually produced it** (input, cache-hit, cache-write and output priced separately at that step's own time), and a «Usage & cost» dialog with a stacked cost-trend chart (day / week / month), a paged per-step usage history (with a dedicated cache-hit column), and a total-cost hero
 - **Keeps up with DeepSeek's shifting peak/off-peak rules** — no more one hard-coded list of `HH:MM` windows: billing keys off **working day vs weekend vs public holiday**, with the holiday / 调休 calendar fetched and cached locally (and editable by hand). When DeepSeek moves the windows, changes the weekend rule, or adds holidays and make-up workdays, you refresh once or edit one field instead of rebuilding the price book
 - **Zero-config default** — 13 segments ship enabled; everything else is a checkbox away
 - **Useful options** — multi-line wrapping (so nothing gets truncated), per-model cost estimation with peak/off-peak pricing, currency choice (CNY / USD), a quick-toggle gear menu, and a dedicated settings page with one-click reset
+- **Official context ring, built in** — the composer's context meter is recreated inside the bar: a right-pinned ring and percentage fed by `contextPressure`, with the shipped click-open `contextBreakdown` panel (system prompt / tools / conversation). Turn the context segment off to hand the ring back to DSH
 - **24-hour clock fields** — peak windows are typed as `09:00`, not whatever AM/PM format the browser locale would impose on a native time input
-- **Clean takeover** — the plugin's bar shadows the built-in `stats` cell at lower priority: while loaded it renders, when unloaded the built-in line returns untouched
+- **Clean takeover, with a native fallback** — the plugin's bar replaces the two built-in composer statistics entries (`activity` and `usage`) at lower priority: while loaded it renders, when unloaded both built-ins return untouched. A **Use native status bar** switch in Settings (and the gear menu) releases both takeovers live, so DSH's own bar and context meter return without restarting. The plugin's own ring replaces the native meter; turning the context segment off (or switching to native mode) hands the native ring back
 - **Bilingual UI** — client locale strings ship for English and Chinese, following the DSH locale system
 
 ## Screenshots
@@ -45,8 +46,8 @@ The status bar replaces the built-in stats line with near-native live session te
 
 | Item | Value |
 |---|---|
-| **DSH desktop app** | **`0.2.0-rc.2` — the target of this line; verified 2026-10-01** |
-| **Plugin line** | **`0.2.x` for the desktop runtime. `0.1.x` targets the retired `0.1.x` runtime and will not load on the 0.2.0 desktop.** |
+| **DSH desktop app** | **`0.2.1-rc.2` — the target of this line; verified 2026-10-19** |
+| **Plugin line** | **`0.2.x` for the desktop runtime. `0.1.x` targets the retired `0.1.x` runtime and will not load on the 0.2.x desktop.** |
 | DSH profile | `desktop` for the packaged app · `web` for a self-hosted `dsh web` · `headless` for the CLI runtime |
 | Runtime | Node ≥ 22 (host) + modern browser (client); no external services |
 | Peer relation | Independent of every other status/TPS plugin: the live rate is folded client-side from this session's own event window, so this plugin registers **no** shared projection key — no peer's key, `stateVersion`, or registration order can displace the bar's TPS |
@@ -60,6 +61,10 @@ DSH 0.2.0 removed `@deepseek-ai/dsh-client-runtime` and split what the old Conve
 - **Live TPS moved into the browser.** 0.2.0 has no durable `assistant/chunk` event, so the host projection that used to serve the rate no longer receives input. The bar folds the session's own live stream client-side instead — same estimator, and a trailing-window rate measurement that no longer depends on how finely the stream is delivered.
 - **The `agent preset` segment was retired** (`SessionSummary.agentPreset` no longer exists; 0.2.0 exposes the preset only to the new-session hero chip). It was off by default, and any saved configuration that still lists it is filtered out on load.
 - **Build no longer needs a DSH source checkout.** The DSH packages the plugin compiles against are pinned devDependencies at `0.2.0-rc.2`; `pnpm install && pnpm run build` is the whole story.
+
+### What 0.2.1 changed
+
+DSH 0.2.1 split the composer statistics into two `conversation.composer.dock` entries — `activity` (order 0) and `usage` (order 1) — so the old single `stats` id no longer replaced anything and the bar rendered beside the built-in pills. This version takes over both ids and renders the native-style context ring inside the bar; the shipped meter stays hidden while that ring is active.
 
 ## Install
 
@@ -81,13 +86,13 @@ Installing from inside the app writes to the same profile a terminal command wou
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # or pin the exact version
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
 ```
 
 ### Self-hosted Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.0
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.1
 ```
 
 ### Other sources
@@ -101,7 +106,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # A pinned release tarball — immutable and versioned (attached to every
 # GitHub release; handy when git access to the repo is awkward)
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.0/bananiceee-dsh-status-bar-0.3.0.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.1/bananiceee-dsh-status-bar-0.3.1.tgz
 ```
 
 > **Note:** pnpm 11 enforces a 24 h `minimumReleaseAge` for freshly published packages — if a same-day release is rejected, append `--config.minimumReleaseAge=0` to the `dsh plugin add` command.
@@ -118,18 +123,19 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # or re-add a pinned version (the in-app page currently has no auto-update:
 # uninstall, then install the new version)
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.0
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
 
 # github: installs — pnpm pins a ref-less `github:` dependency to the commit
 # resolved at install time, so `dsh plugin update github:...` reports
 # "Already up to date" and keeps the old build. Upgrade with a re-add:
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.0
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.1
 ```
 
 ### Disable
 
-- **Hide the bar only** — the client master switch (Settings → Status Bar, or the gear menu in the composer) turns the bar off instantly; the host projections and the usage ledger keep running.
+- **Switch to the native bar** — tick **Use native status bar** in Settings → Status Bar or the gear menu. The plugin releases both dock entries immediately and DSH's built-in bar (including its context meter) returns; untick to restore the plugin bar.
+- **Hide the plugin bar only** — the client master switch (Settings → Status Bar, or the gear menu in the composer) turns the plugin bar off instantly; the host projections and the usage ledger keep running.
 - **Stop the plugin entirely** — disable it on the in-app **Plugins** page (or remove it from the profile's `bundles` list); re-enabling restores it.
 
 ### Uninstall
@@ -138,13 +144,13 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.0
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
 ```
 
-Removal restores the built-in stats line automatically (the shadow cell is released). **Data left behind:** browser `localStorage` (`dsh.statusBar.v1`) and the host usage file (see [Permissions & data](#permissions--data)) are not deleted — remove them manually for a clean slate.
+Removal restores the built-in activity and usage controls automatically (both shadow cells are released). **Data left behind:** browser `localStorage` (`dsh.statusBar.v1`) and the host usage file (see [Permissions & data](#permissions--data)) are not deleted — remove them manually for a clean slate.
 
 ## Quick start
 
 1. Install (above) and restart the app if the installer asks for it.
 2. Start a session — the bar shows status · model · turns · durations · speeds · cache hit · tokens · context · TPS · session time · jobs · queue · errors by default.
-3. Open **Settings → Status Bar** (its own section in the Settings nav, labeled `Status Bar`) to toggle/reorder segments, enable wrapping, or reset.
+3. Open **Settings → Status Bar** (its own section in the Settings nav, labeled `Status Bar`) to toggle/reorder segments, enable wrapping, switch to the native bar, or reset.
 4. Want cost estimates? Add the models you use to the **model price book**:
 
    ```sh
@@ -179,7 +185,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 
 **Environment variables:** `DSH_HOME` (host-side) — base directory for the plugin's local data (default `~/.dsh`). No other env vars, no secrets, no tokens.
 
-**Segment reference** (all 16, toggleable & reorderable):
+**Segment reference** (all 16 toggleable; the context ring is pinned right, the rest reorderable):
 
 | Segment | Shows | Source |
 |---|---|---|
@@ -192,7 +198,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 | TTFT & decode | avg first token · tok/s | `sessionStats` |
 | Cache hit | prompt cache-hit share (2 decimals, capped at 99.99%) | `tokenUsage` |
 | Tokens | billed input/output totals | `tokenUsage` |
-| Context | context-window occupancy % | `contextPressure` |
+| Context ring | right-pinned ring + click-open composition panel | `contextPressure`, `contextBreakdown` |
 | Throughput TPS | live generation rate (default on) | client fold of the session event window (`assistant/live-chunk`); block-aware token estimation (~4 chars/token + block/role framing, re-priced at `block-end`), measured over a trailing 1.5 s window so the figure is independent of stream granularity; switches to the provider-reported rate once exact usage lands, and reports 0 while the session is not generating |
 | Session time | wall clock, ticks while running | chat `turnTimings` |
 | Cost estimate | ≈¥0.0123 (off by default) | `sessionUsage` projection — each model's usage × its own effective price, with the tier decided by the working-day/weekend/holiday rule at that step's own time, summed across models |
@@ -213,8 +219,8 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 
 | Symptom | Cause & fix |
 |---|---|
-| The bar does not appear | Master switch off → enable it in Settings → Status Bar, or via the gear menu. `localStorage` cleared? Config resets to defaults. On a fresh install, restart the app once. |
-| Nothing loads after upgrading from 0.1.x | Expected — the `0.1.x` line cannot run on the 0.2.0 desktop. Uninstall it, then install `0.2.x` into the `desktop` profile. |
+| The bar does not appear | Master switch off or native mode on → enable the plugin bar / untick **Use native status bar** in Settings → Status Bar, or via the gear menu. `localStorage` cleared? Config resets to defaults. On a fresh install, restart the app once. |
+| Nothing loads after upgrading from 0.1.x | Expected — the `0.1.x` line cannot run on the 0.2.x desktop. Uninstall it, then install `0.2.x` into the `desktop` profile. |
 | TPS segment is 0 / blank | No stream has started yet in this session, or the stream has settled (no active generation reads as 0 by design). The measurement window restarts on each retry. |
 | TPS conflicts with another plugin | None by design — this plugin registers **no** shared projection key. The live rate is folded client-side from this session's own event window, so another status/TPS plugin cannot displace or shadow it. |
 | Cost estimate missing | None of the session's models is in the price book (or they are all zero-priced) → add them in Settings → Status Bar → Model price book. Costs are estimated at the book's rates (per model, flat or peak/off-peak), not provider billing. |
@@ -226,7 +232,7 @@ All configuration is client-side, stored in browser `localStorage` under **`dsh.
 
 **Logs:** the plugin writes no log files of its own — host-side diagnostics appear in the DSH host process output, client-side issues in the browser devtools console.
 
-**Rollback:** the settings page has a one-click **Reset** (restores all defaults). For the plugin itself, uninstall → re-add the previous version with `dsh plugin --profile desktop add <pkg>@<version>`; the built-in stats line is always restored automatically on removal.
+**Rollback:** the settings page has a one-click **Reset** (restores all defaults). For the plugin itself, uninstall → re-add the previous version with `dsh plugin --profile desktop add <pkg>@<version>`; the built-in statistics controls are always restored automatically on removal.
 
 ## Development
 

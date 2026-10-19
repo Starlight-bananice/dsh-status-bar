@@ -7,6 +7,8 @@ export declare const NS = "status-bar";
 declare const zh: {
     nav: string;
     'section.intro': string;
+    'section.native': string;
+    'section.nativeHint': string;
     'section.enabled': string;
     'section.enabledHint': string;
     'section.wrap': string;
@@ -172,7 +174,11 @@ declare const zh: {
     'bar.decodeSpeed': string;
     'bar.cacheHit': string;
     'bar.tokens': string;
-    'bar.context': string;
+    'ring.aria': string;
+    'ring.used': string;
+    'ring.system': string;
+    'ring.tools': string;
+    'ring.messages': string;
     'bar.tps': string;
     'bar.sessionTime': string;
     'bar.cost': string;
@@ -181,6 +187,7 @@ declare const zh: {
     'bar.errors': string;
     'quick.title': string;
     'quick.master': string;
+    'quick.native': string;
     'quick.reset': string;
     'preview.line': string;
 };

@@ -1,9 +1,10 @@
 /**
- * Status-bar management page (`settings.section` entry): master switch,
- * wrap toggle, per-segment checkboxes with reordering, the user-maintained
- * model price book (each model owns its prices AND its peak schedule), and the
- * shared holiday calendar that drives DeepSeek's working-day rules.
- * Writes the same localStorage store as the bar and the usage dialog.
+ * Status-bar management page (`settings.section` entry): native-bar / plugin
+ * mode switch, master switch, wrap toggle, per-segment checkboxes with
+ * reordering, the user-maintained model price book (each model owns its prices
+ * AND its peak schedule), and the shared holiday calendar that drives
+ * DeepSeek's working-day rules. Writes the same localStorage store as the bar
+ * and the usage dialog.
  */
 
 import { memo, useEffect, useState } from 'react'
@@ -37,6 +38,7 @@ import { DAY_TYPES, DEFAULT_PRICING_TIMEZONE, dateInTimezone, normalizeHHMM, upc
 import { effectivePrices } from './segments.ts'
 import { holidayStore, useHolidayAutoFetch, useHolidayView } from './holidays.ts'
 import { StatusPill } from './StatusPill.tsx'
+import { RingGlyph } from './ContextRing.tsx'
 import { NS } from './locales.ts'
 import { useCurrentModel } from './live-model.ts'
 import './projections.ts'
@@ -59,6 +61,9 @@ function SegmentRow({
   t: SettingsSectionProps['t']
 }) {
   const meta = SEGMENT_META[id]
+  // The context ring is pinned to the right of the bar, so its position in
+  // the segment order has no effect; disable the reorder arrows.
+  const pinned = id === 'context'
   return (
     <div className="dsb-set-row">
       <label className="dsb-set-check">
@@ -79,13 +84,13 @@ function SegmentRow({
         <button
           type="button"
           aria-label="↑"
-          disabled={!enabled || first}
+          disabled={!enabled || pinned || first}
           onClick={() => moveSegment(id, -1)}
         >↑</button>
         <button
           type="button"
           aria-label="↓"
-          disabled={!enabled || last}
+          disabled={!enabled || pinned || last}
           onClick={() => moveSegment(id, 1)}
         >↓</button>
       </span>
@@ -590,6 +595,16 @@ export const SettingsSection = memo(function SettingsSection(props: SettingsSect
       <label className="dsb-set-check">
         <input
           type="checkbox"
+          checked={config.native}
+          onChange={() => updateConfig({ native: !config.native })}
+        />
+        <span>{t('section.native')}</span>
+      </label>
+      <p className="dsb-set-hint">{t('section.nativeHint')}</p>
+
+      <label className="dsb-set-check">
+        <input
+          type="checkbox"
           checked={config.enabled}
           onChange={() => updateConfig({ enabled: !config.enabled })}
         />
@@ -679,10 +694,16 @@ export const SettingsSection = memo(function SettingsSection(props: SettingsSect
       </div>
 
       <h3 className="dsb-set-heading">{t('section.preview')}</h3>
-      <div className="dsb-bar dsb-wrap dsb-set-preview">
-        <span className="dsb-seg"><span className="dsb-dot" style={{ backgroundColor: '#e8b339' }} aria-hidden />{t('bar.status.running')}</span>
-        <span className="dsb-sep" aria-hidden>|</span>
-        <span className="dsb-seg">{t('preview.line')}</span>
+      <div className="dsb-bar dsb-set-preview">
+        <div className="dsb-line">
+          <span className="dsb-seg"><span className="dsb-dot" style={{ backgroundColor: '#e8b339' }} aria-hidden />{t('bar.status.running')}</span>
+          <span className="dsb-sep" aria-hidden>|</span>
+          <span className="dsb-seg">{t('preview.line')}</span>
+        </div>
+        <span className="dsb-ring dsb-ctx-static" aria-hidden>
+          <RingGlyph percent={62} />
+          <span>62%</span>
+        </span>
       </div>
 
       <button type="button" className="dsb-set-reset" onClick={resetConfig}>

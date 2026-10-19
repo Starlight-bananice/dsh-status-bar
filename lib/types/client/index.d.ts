@@ -1,8 +1,10 @@
 /**
  * dsh-status-bar client entry: installs the bar's stylesheet and locale, then
  * registers three surfaces —
- *  1. `conversation.composer.dock` id 'stats' at a LOWER priority: shadows the
- *     shipped stats line while this plugin is live (restores on unload).
+ *  1. `conversation.composer.dock` ids 'activity' (this bar) and 'usage' (an
+ *     empty replacement) at a LOWER priority: shadows the two shipped stats
+ *     pills while this plugin is live (restores on unload). DSH 0.2.1 split the
+ *     old single 'stats' cell into those two entries.
  *  2. `conversation.input.right`: the quick-toggle gear menu.
  *  3. `settings.section`: the management page.
  */
