@@ -17,11 +17,10 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ContextBreakdownProjection, ContextPressureProjection } from '@deepseek-ai/dsh-token-meter/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-import {
-  Tooltip,
-  useAnchoredPosition,
-  useDismissOnOutsidePointer,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+// Host primitives come through the plugin's own shim: the panel placement and
+// the outside-pointer dismissal are implemented locally, because the host no
+// longer exports `useAnchoredPosition` (see `host.ts`).
+import { Tooltip, useAnchoredPosition, useDismissOnOutsidePointer } from './host.ts'
 import type { StatusBarKey } from './config.ts'
 import { formatTokens } from './format.ts'
 import { NS } from './locales.ts'

@@ -18,10 +18,11 @@ import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/cli
 import type { JobView } from '@deepseek-ai/dsh-jobs/view'
 import type { IJobs } from '@deepseek-ai/dsh-api-job-controller/client'
 import type { LiveRateSource } from './live-rate.ts'
-import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { BarBoundary } from './BarBoundary.tsx'
 import { useStatusBarConfig } from './config.ts'
+import { Tooltip } from './host.ts'
 import { noteCurrentModel } from './live-model.ts'
 import { buildSegments, deriveWindowStats, type SegmentView } from './segments.ts'
 import { ContextRing } from './ContextRing.tsx'
@@ -45,6 +46,11 @@ export interface StatusBarInjected {
   watchRows: (sessionId: SessionId) => () => void
   /** Follow one session's event window for the live TPS figure; returns the stop function. */
   watchLiveRate: (sessionId: SessionId) => () => void
+  /**
+   * Release the plugin's dock takeover so the host's own `activity` / `usage`
+   * cells render again; called by the bar's error boundary.
+   */
+  releaseDock: () => void
 }
 
 /** Full props for the composer-dock entry (owner InputZone + standard kit + locale + jobs face). */
@@ -245,3 +251,19 @@ export const StatusBarDockEntry = memo(function StatusBarDockEntry(props: Status
     </div>
   )
 })
+
+/**
+ * The registered composer-dock entry: the bar inside an error boundary.
+ *
+ * The boundary sits above every hook the bar owns, so a throw in the bar's
+ * body or in any segment/ring render is contained. Without it the host drops
+ * the whole entry as crashed and — because the plugin shadows the native stats
+ * cells — the user is left with no bar at all (issue #4).
+ */
+export function StatusBarDockEntryBoundary(props: StatusBarDockEntryProps) {
+  return (
+    <BarBoundary onFailure={props.releaseDock}>
+      <StatusBarDockEntry {...props} />
+    </BarBoundary>
+  )
+}

@@ -1,10 +1,10 @@
 # dsh-status-bar · 一眼看清你的 agent 正在做什么
 
-> **✅ 已适配 DSH 桌面版 —— DSH `0.2.1-rc.2`。**
+> **✅ 已适配 DSH 桌面版 —— DSH `0.2.2-rc.3` 与 NEXT `2.0.23`。**
 > **`0.2.x` 版本线面向桌面版运行时：请把它安装到 `desktop` profile（应用内「插件」页，或 `dsh plugin --profile desktop add …`）。**
 > **已停止维护的 `0.1.x` 版本线面向旧的 `0.1.x` 运行时，无法在 0.2.x 桌面版上加载。**
 
-[![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![DSH](https://img.shields.io/badge/DSH-0.2.2--rc.3_%7C_NEXT_2.0.23-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -27,7 +27,7 @@
 - **多项实用选项** —— 多行换行显示（内容再多也不会被截断省略）、逐模型费用估算（支持峰谷计价）、币种切换（CNY / USD）、齿轮快捷开关菜单，以及带一键重置的专属设置页
 - **官方上下文圆环内置** —— 把输入框原生的上下文圆环做进底栏：由 `contextPressure` 驱动的右侧圆环 + 百分比，以及原生的点击展开面板（系统提示词 / 工具 / 对话构成，来自 `contextBreakdown`）。关闭上下文段即可把圆环交还给 DSH 原生组件
 - **24 小时制时段输入** —— 峰谷时段用 24 小时制文本框（`09:00`），不再受浏览器区域设置影响显示成 AM/PM
-- **干净的接管机制，可随时切回原生** —— 插件底栏以低优先级接管内置的两个输入框统计条目（`activity` 与 `usage`）：加载期间由其渲染，卸载后两个内置控件原样恢复。设置页与齿轮菜单里的**使用原生底栏**开关会立即释放两个接管，无需重启即可恢复 DSH 自带底栏与上下文圆环。插件内置的圆环会替代原生圆环；关闭上下文段或切回原生模式时，原生圆环保留
+- **干净的接管机制，可随时切回原生** —— 插件底栏以低优先级接管内置的两个输入框统计条目（`activity` 与 `usage`）：加载期间由其渲染，卸载后两个内置控件原样恢复。设置页与齿轮菜单里的**使用原生底栏**开关会立即释放两个接管，无需重启即可恢复 DSH 自带底栏与上下文圆环。插件内置的圆环会替代原生圆环；关闭上下文段或切回原生模式时，原生圆环保留。若底栏自身渲染失败，同一套释放逻辑会把原生底栏放回来，而不是让输入框下方一片空白
 - **双语界面** —— 客户端文案内置英文与中文，遵循 DSH locale 体系
 
 ## Screenshots（界面预览）
@@ -46,7 +46,7 @@
 
 | 项目 | 说明 |
 |---|---|
-| **DSH 桌面版** | **`0.2.1-rc.2`——本版本线适配的目标；最后验证于 2026-10-19** |
+| **DSH 桌面版** | **`0.2.2-rc.3` 与 NEXT `2.0.23`——本版本线适配的目标；最后验证于 2026-11-19** |
 | **插件版本线** | **`0.2.x` 面向桌面版运行时。`0.1.x` 面向已停止维护的 `0.1.x` 运行时，无法在 0.2.x 桌面版上加载。** |
 | DSH profile | 打包桌面应用使用 `desktop` · 自建 `dsh web` 使用 `web` · CLI 运行时使用 `headless` |
 | 运行环境 | Node ≥ 22（host）+ 现代浏览器（client）；无外部服务依赖 |
@@ -65,6 +65,17 @@ DSH 0.2.0 移除了 `@deepseek-ai/dsh-client-runtime`，并把旧 Conversation �
 ### 0.2.1 改了什么
 
 DSH 0.2.1 把输入框统计拆成了两个 `conversation.composer.dock` 条目——`activity`（order 0）与 `usage`（order 1）。原来单一的 `stats` id 不再能替换任何内置条目，于是底栏与内置胶囊并排重复渲染。本版本同时接管两个 id，并把原生风格的上下文圆环直接渲染在底栏右侧；圆环显示期间隐藏原生组件。
+
+### 0.2.2 / NEXT 2.0.23 改了什么
+
+`@deepseek-ai/dsh-client-ui-primitives` 不再导出 `useAnchoredPosition`——这是本插件用来给上下文圆环面板定位的宿主内部 hook。import 照样能编译通过，于是在这些版本上，圆环的首帧渲染会在 `conversation.composer.dock` 条目**内部**抛出 `TypeError: … useAnchoredPosition is not a function`。宿主会把这个条目判为崩溃并跳过，而本插件又以更低优先级遮蔽了 `activity` / `usage` 两个原生条目，原生底栏同样回不来——整条状态栏直接消失（issue #4，最初报告于 NEXT `2.0.23-next`）。
+
+从 `0.3.2` 起，底栏需要的能力由插件自己持有：
+
+- **定位与外部点击关闭的 hook 改为插件本地实现。** `src/client/host.ts` 自己实现了锚点定位与外部点击关闭（从被替换掉的 0.2.0 API 移植），宿主再怎么调整也删不掉它们。
+- **其余宿主 primitive 一律防御式读取。** 宿主不再导出的符号会降级成本地替身——例如 `Tooltip` 缺失只损失悬浮气泡、不会毁掉整行——而不是在首帧抛错。
+- **即便仍然渲染失败，也会回落到原生底栏。** dock 条目现在包在错误边界里：首帧渲染失败即释放接管，DSH 自己的 `activity` / `usage` 与上下文计量器回归，插件的其余部分（齿轮菜单、设置页、用量对话框）继续可用；下一次修改设置会重试接管。
+- **`scripts/smoke-client.mjs` 把这份契约固定下来。** `pnpm run smoke`（也是 CI 的一步）会按 shell 的方式加载 `lib/client.js`，逐个校验模块请求与它读取的每个 primitive 是否落在本版本线支持的宿主面上，并在开启上下文圆环的情况下渲染 dock 条目。
 
 ## Install（安装）
 
@@ -86,13 +97,13 @@ DSH 0.2.1 把输入框统计拆成了两个 `conversation.composer.dock` 条目�
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # 或钉住确切版本
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.2
 ```
 
 ### 自建 Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.1
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.2
 ```
 
 ### 其他来源
@@ -106,7 +117,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # 或安装固定版本的 release tgz —— 不可变且带版本号（随每个 GitHub
 # release 附带；适合不便直连 git 仓库的场景）
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.1/bananiceee-dsh-status-bar-0.3.1.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.2/bananiceee-dsh-status-bar-0.3.2.tgz
 ```
 
 > **提示：** pnpm 11 对刚发布的包强制 24 小时 `minimumReleaseAge`——若某个当天发布的版本被拒绝，在 `dsh plugin add` 命令后追加 `--config.minimumReleaseAge=0`。
@@ -123,13 +134,13 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # 或重新 add 钉住的版本（应用内页面暂不支持自动更新：
 # 请先卸载，再安装新版本）
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.2
 
 # github: 安装——pnpm 会把不带 ref 的 github: 依赖钉在首次安装时解析到
 # 的 commit，`dsh plugin update github:...` 只会提示 "Already up to date"
 # 并保留旧构建。升级请用重新 add：
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.1
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.2
 ```
 
 ### 禁用

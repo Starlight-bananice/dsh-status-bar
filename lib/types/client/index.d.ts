@@ -11,6 +11,7 @@
 import type { IJobs } from '@deepseek-ai/dsh-api-job-controller/client';
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client';
 import type { SessionId } from '@deepseek-ai/dsh-session/types';
+export { BarBoundary } from './BarBoundary.tsx';
 /** Structural slots face (register/inject) — matches the runtime SlotRegistry. */
 type SlotsService = {
     inject(key: string, callback: () => () => void): () => void;
@@ -38,5 +39,4 @@ type ClientContext = {
 export declare const inject: string[];
 /** Register the bar, the quick menu, and the management page. */
 export declare function apply(ctx: ClientContext): void;
-export {};
 //# sourceMappingURL=index.d.ts.map

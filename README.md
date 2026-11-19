@@ -1,10 +1,10 @@
 # dsh-status-bar · Know what your agent is doing — at a glance
 
-> **✅ Adapted to the DSH desktop app — DSH `0.2.1-rc.2`.**
+> **✅ Adapted to the DSH desktop app — DSH `0.2.2-rc.3` and NEXT `2.0.23`.**
 > **The `0.2.x` line is built for the desktop runtime: install it into the `desktop` profile (in-app **Plugins** page, or `dsh plugin --profile desktop add …`).**
 > **The retired `0.1.x` line targets the old `0.1.x` runtime and will NOT load on the 0.2.x desktop.**
 
-[![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.2-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![DSH](https://img.shields.io/badge/DSH-0.2.2--rc.3_%7C_NEXT_2.0.23-blue)](https://github.com/deepseek-ai/deepseek-harness) [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FStarlight-bananice%2Fdsh-status-bar%2Ftags&query=%24%5B0%5D.name&label=version&color=green)](https://github.com/Starlight-bananice/dsh-status-bar/releases) [![npm](https://img.shields.io/npm/v/@bananiceee/dsh-status-bar)](https://www.npmjs.com/package/@bananiceee/dsh-status-bar) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![topic](https://img.shields.io/badge/topic-dsh--plugin-orange)](https://github.com/topics/dsh-plugin) [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) · [中文](README.zh.md)
 
@@ -27,7 +27,7 @@
 - **Useful options** — multi-line wrapping (so nothing gets truncated), per-model cost estimation with peak/off-peak pricing, currency choice (CNY / USD), a quick-toggle gear menu, and a dedicated settings page with one-click reset
 - **Official context ring, built in** — the composer's context meter is recreated inside the bar: a right-pinned ring and percentage fed by `contextPressure`, with the shipped click-open `contextBreakdown` panel (system prompt / tools / conversation). Turn the context segment off to hand the ring back to DSH
 - **24-hour clock fields** — peak windows are typed as `09:00`, not whatever AM/PM format the browser locale would impose on a native time input
-- **Clean takeover, with a native fallback** — the plugin's bar replaces the two built-in composer statistics entries (`activity` and `usage`) at lower priority: while loaded it renders, when unloaded both built-ins return untouched. A **Use native status bar** switch in Settings (and the gear menu) releases both takeovers live, so DSH's own bar and context meter return without restarting. The plugin's own ring replaces the native meter; turning the context segment off (or switching to native mode) hands the native ring back
+- **Clean takeover, with a native fallback** — the plugin's bar replaces the two built-in composer statistics entries (`activity` and `usage`) at lower priority: while loaded it renders, when unloaded both built-ins return untouched. A **Use native status bar** switch in Settings (and the gear menu) releases both takeovers live, so DSH's own bar and context meter return without restarting. The plugin's own ring replaces the native meter; turning the context segment off (or switching to native mode) hands the native ring back. If the bar itself ever fails to render, the same release puts the native bar back instead of leaving the composer empty
 - **Bilingual UI** — client locale strings ship for English and Chinese, following the DSH locale system
 
 ## Screenshots
@@ -46,7 +46,7 @@ The status bar replaces the built-in stats line with near-native live session te
 
 | Item | Value |
 |---|---|
-| **DSH desktop app** | **`0.2.1-rc.2` — the target of this line; verified 2026-10-19** |
+| **DSH desktop app** | **`0.2.2-rc.3` and NEXT `2.0.23` — the target of this line; verified 2026-11-19** |
 | **Plugin line** | **`0.2.x` for the desktop runtime. `0.1.x` targets the retired `0.1.x` runtime and will not load on the 0.2.x desktop.** |
 | DSH profile | `desktop` for the packaged app · `web` for a self-hosted `dsh web` · `headless` for the CLI runtime |
 | Runtime | Node ≥ 22 (host) + modern browser (client); no external services |
@@ -65,6 +65,17 @@ DSH 0.2.0 removed `@deepseek-ai/dsh-client-runtime` and split what the old Conve
 ### What 0.2.1 changed
 
 DSH 0.2.1 split the composer statistics into two `conversation.composer.dock` entries — `activity` (order 0) and `usage` (order 1) — so the old single `stats` id no longer replaced anything and the bar rendered beside the built-in pills. This version takes over both ids and renders the native-style context ring inside the bar; the shipped meter stays hidden while that ring is active.
+
+### What 0.2.2 / NEXT 2.0.23 changed
+
+`@deepseek-ai/dsh-client-ui-primitives` stopped exporting `useAnchoredPosition` — a host-internal hook this plugin had used to place the context-ring panel. The import still compiled, so on those builds the first render of the ring threw `TypeError: … useAnchoredPosition is not a function` **inside** the `conversation.composer.dock` entry. The host marks such an entry crashed and skips it, and because the plugin shadows `activity` / `usage` at lower priority the native bar did not come back either: the status line disappeared entirely (issue #4, first reported on NEXT `2.0.23-next`).
+
+From `0.3.2` the bar owns what it needs from the host:
+
+- **The placement and outside-pointer hooks are plugin-local.** `src/client/host.ts` implements the anchored-position and outside-dismiss behaviour itself (ported from the 0.2.0 API they replace), so a host release cannot remove them again.
+- **Every other host primitive is read defensively.** A symbol the host stops exporting degrades to a local stand-in — a missing `Tooltip` costs the hover bubble, not the row — instead of throwing on first render.
+- **A bar that still fails falls back to the native one.** The dock entry now sits inside an error boundary: the first failed render releases the takeover, DSH's own `activity` / `usage` cells and context meter return, and the rest of the plugin (gear menu, settings page, usage dialog) keeps working. The next settings change retries the takeover.
+- **`scripts/smoke-client.mjs` pins that surface.** `pnpm run smoke` (also a CI step) loads `lib/client.js` the way the shell does, checks every module request and every primitive it reads against the host builds this line supports, and renders the dock entry with the context ring on.
 
 ## Install
 
@@ -86,13 +97,13 @@ Installing from inside the app writes to the same profile a terminal command wou
 dsh plugin --profile desktop add @bananiceee/dsh-status-bar
 
 # or pin the exact version
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.2
 ```
 
 ### Self-hosted Web / CLI
 
 ```sh
-dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.1
+dsh plugin --profile web add @bananiceee/dsh-status-bar@0.3.2
 ```
 
 ### Other sources
@@ -106,7 +117,7 @@ dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar
 
 # A pinned release tarball — immutable and versioned (attached to every
 # GitHub release; handy when git access to the repo is awkward)
-dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.1/bananiceee-dsh-status-bar-0.3.1.tgz
+dsh plugin --profile desktop add https://github.com/Starlight-bananice/dsh-status-bar/releases/download/v0.3.2/bananiceee-dsh-status-bar-0.3.2.tgz
 ```
 
 > **Note:** pnpm 11 enforces a 24 h `minimumReleaseAge` for freshly published packages — if a same-day release is rejected, append `--config.minimumReleaseAge=0` to the `dsh plugin add` command.
@@ -123,13 +134,13 @@ dsh plugin --profile desktop update @bananiceee/dsh-status-bar
 
 # or re-add a pinned version (the in-app page currently has no auto-update:
 # uninstall, then install the new version)
-dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.1
+dsh plugin --profile desktop add @bananiceee/dsh-status-bar@0.3.2
 
 # github: installs — pnpm pins a ref-less `github:` dependency to the commit
 # resolved at install time, so `dsh plugin update github:...` reports
 # "Already up to date" and keeps the old build. Upgrade with a re-add:
 dsh plugin --profile desktop remove @bananiceee/dsh-status-bar
-dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.1
+dsh plugin --profile desktop add github:Starlight-bananice/dsh-status-bar#v0.3.2
 ```
 
 ### Disable

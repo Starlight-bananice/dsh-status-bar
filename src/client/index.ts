@@ -15,7 +15,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { en, NS, zh } from './locales.ts'
 import { getConfig, subscribeConfig } from './config.ts'
 import { LiveRateStore } from './live-rate.ts'
-import { StatusBarDockEntry } from './StatusBar.tsx'
+import { StatusBarDockEntryBoundary } from './StatusBar.tsx'
 import { QuickMenuEntry } from './QuickMenu.tsx'
 import { SettingsSection } from './SettingsSection.tsx'
 import { UsageDialogEntry } from './UsageDialog.tsx'
@@ -24,6 +24,12 @@ import { UsageDialogEntry } from './UsageDialog.tsx'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+
+// The host only reads `apply` / `inject` from this module; the boundary is
+// re-exported so the client smoke test can pin its failure contract — a
+// render error inside the bar must release the takeover, never take the slot
+// entry down with it (issue #4).
+export { BarBoundary } from './BarBoundary.tsx'
 
 /** Structural slots face (register/inject) — matches the runtime SlotRegistry. */
 type SlotsService = {
@@ -1048,7 +1054,19 @@ export function apply(ctx: ClientContext): void {
   // usage controls and context meter render again. The gear menu and settings
   // page stay registered in either mode, so this switch is always reachable.
   let offDock: (() => void) | undefined
+  // Set when a render inside the bar failed: the bar's error boundary releases
+  // the takeover so the native cells come back instead of leaving the composer
+  // with no status line at all. Sticky until the next explicit config change,
+  // which is also the natural way to retry (see `syncDock`).
+  let dockReleased = false
+  const releaseDock = (): void => {
+    if (dockReleased) return
+    dockReleased = true
+    offDock?.()
+    offDock = undefined
+  }
   const syncDock = (): void => {
+    dockReleased = false
     if (getConfig().native) {
       offDock?.()
       offDock = undefined
@@ -1066,8 +1084,9 @@ export function apply(ctx: ClientContext): void {
           hooks: { jobs: ctx.jobs.state, liveRate },
           watchRows: (sessionId: SessionId) => ctx.jobs.watchRows(sessionId),
           watchLiveRate: (sessionId: SessionId) => liveRate.watch(ctx.sessions, sessionId),
+          releaseDock,
         }),
-      }, StatusBarDockEntry)
+      }, StatusBarDockEntryBoundary)
       const offUsage = ctx.slots.register({
         name: 'conversation.composer.dock',
         id: 'usage',

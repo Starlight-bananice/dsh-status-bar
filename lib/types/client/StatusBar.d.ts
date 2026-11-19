@@ -35,8 +35,22 @@ export interface StatusBarInjected {
     watchRows: (sessionId: SessionId) => () => void;
     /** Follow one session's event window for the live TPS figure; returns the stop function. */
     watchLiveRate: (sessionId: SessionId) => () => void;
+    /**
+     * Release the plugin's dock takeover so the host's own `activity` / `usage`
+     * cells render again; called by the bar's error boundary.
+     */
+    releaseDock: () => void;
 }
 /** Full props for the composer-dock entry (owner InputZone + standard kit + locale + jobs face). */
 export type StatusBarDockEntryProps = PropsRuntime<'conversation.composer.dock'> & PropsLocale<typeof NS> & InjectFace<StatusBarInjected>;
 export declare const StatusBarDockEntry: import("react").MemoExoticComponent<(props: StatusBarDockEntryProps) => import("react").JSX.Element | null>;
+/**
+ * The registered composer-dock entry: the bar inside an error boundary.
+ *
+ * The boundary sits above every hook the bar owns, so a throw in the bar's
+ * body or in any segment/ring render is contained. Without it the host drops
+ * the whole entry as crashed and — because the plugin shadows the native stats
+ * cells — the user is left with no bar at all (issue #4).
+ */
+export declare function StatusBarDockEntryBoundary(props: StatusBarDockEntryProps): import("react").JSX.Element;
 //# sourceMappingURL=StatusBar.d.ts.map
